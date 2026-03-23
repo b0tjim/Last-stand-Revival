@@ -1,0 +1,3434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Last Stand: Revival</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            color: #fff;
+        }
+
+        #gameContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        canvas {
+            border: 3px solid #333;
+            background: #2a2a2a;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #ui {
+            display: flex;
+            gap: 30px;
+            background: #333;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        #lootFeed {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #ffd700;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            transition: all 0.3s;
+        }
+
+        #lootFeed.minimized {
+            height: 40px;
+            overflow: hidden;
+        }
+
+        #lootFeed:not(.minimized) {
+            height: 250px;
+            overflow-y: auto;
+        }
+
+        #lootFeedHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ffd700;
+        }
+
+        #lootFeedTitle {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        #minimizeBtn {
+            background: none;
+            border: none;
+            color: #ffd700;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+        }
+
+        #minimizeBtn:hover {
+            color: #ffed4e;
+        }
+
+        #lootFeed::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+
+        #lootFeed {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+
+        #equipmentBar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: 2px solid #4a90e2;
+            display: flex;
+            gap: 15px;
+            font-family: 'Courier New', monospace;
+            z-index: 100;
+        }
+
+        .equipment-slot {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            min-width: 80px;
+        }
+
+        .equipment-slot.active {
+            background: rgba(255, 215, 61, 0.3);
+            border: 2px solid #ffd700;
+        }
+
+        .equipment-key {
+            color: #ffd700;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .equipment-name {
+            color: #fff;
+            font-size: 11px;
+            text-align: center;
+        }
+
+        .equipment-name.empty {
+            color: #666;
+        }
+
+        .equipment-ammo {
+            color: #ffd93d;
+            font-size: 9px;
+            text-align: center;
+        }
+
+        .loot-message {
+            padding: 3px;
+            margin: 2px 0;
+            border-radius: 3px;
+            animation: slideIn 0.3s ease-out;
+            font-size: 11px;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .loot-header {
+            color: #ffd700;
+            font-weight: bold;
+            border-bottom: 1px solid #ffd700;
+            margin-bottom: 5px;
+            padding-bottom: 3px;
+        }
+
+        .loot-common {
+            color: #9e9e9e;
+        }
+
+        .loot-uncommon {
+            color: #4caf50;
+        }
+
+        .loot-rare {
+            color: #2196f3;
+        }
+
+        .loot-legendary {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        .loot-weapon {
+            color: #ff6b6b;
+        }
+
+        .loot-ammo {
+            color: #ffd93d;
+        }
+
+        .loot-health {
+            color: #6bcf7f;
+        }
+
+        .loot-total {
+            color: #ffd700;
+            font-weight: bold;
+            margin-top: 5px;
+            padding-top: 5px;
+            border-top: 1px solid #ffd700;
+        }
+
+        #inventory {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            min-width: 300px;
+        }
+
+        .inventory-item {
+            padding: 5px;
+            margin: 3px 0;
+            background: #444;
+            border-radius: 4px;
+        }
+
+        .weapon {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+
+        .ammo {
+            color: #ffd93d;
+        }
+
+        .health-item {
+            color: #6bcf7f;
+        }
+
+        .common-junk {
+            color: #9e9e9e;
+        }
+
+        .uncommon-junk {
+            color: #4caf50;
+        }
+
+        .rare-junk {
+            color: #2196f3;
+        }
+
+        .legendary-junk {
+            color: #ff9800;
+            font-weight: bold;
+        }
+
+        #gameOver {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+        }
+
+        #gameOver h2 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: #ff4444;
+        }
+
+        #gameOver.victory h2 {
+            color: #44ff44;
+        }
+
+        .gameOverButtons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+
+        #nextMapBtn {
+            background: #4caf50;
+        }
+
+        #nextMapBtn:hover {
+            background: #45a049;
+        }
+
+        #shopBtn {
+            background: #ffd700;
+            color: #000;
+        }
+
+        #shopBtn:hover {
+            background: #ffed4e;
+        }
+
+        #restartBtn {
+            background: #ff6b6b;
+        }
+
+        #restartBtn:hover {
+            background: #ff4444;
+        }
+
+        #shop {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            z-index: 1001;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        #shop h2 {
+            color: #ffd700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .shop-category {
+            margin-bottom: 30px;
+        }
+
+        .shop-category h3 {
+            color: #4a90e2;
+            border-bottom: 2px solid #4a90e2;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .shop-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .shop-item {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #555;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            border-color: #ffd700;
+            transform: translateY(-2px);
+        }
+
+        .shop-item-name {
+            font-weight: bold;
+            color: #ffd700;
+            margin-bottom: 5px;
+        }
+
+        .shop-item-stats {
+            font-size: 12px;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+
+        .shop-item-price {
+            color: #4caf50;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .shop-item button {
+            width: 100%;
+            padding: 8px;
+            background: #4caf50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+        }
+
+        .shop-item button:hover {
+            background: #45a049;
+        }
+
+        .shop-item button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+
+        #closeShopBtn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 18px;
+            background: #ff6b6b;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #closeShopBtn:hover {
+            background: #ff4444;
+        }
+
+        #shopWallet {
+            text-align: center;
+            font-size: 24px;
+            color: #ffd700;
+            margin-bottom: 20px;
+        }
+
+        .controls {
+            background: #333;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        /* Title Screen */
+        #titleScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1a1a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            font-family: 'Courier New', monospace;
+        }
+
+        #titleScreen.hidden {
+            display: none;
+        }
+
+        .title-content {
+            text-align: center;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 3px solid #8b0000;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(139, 0, 0, 0.5);
+        }
+
+        .game-title {
+            font-size: 72px;
+            font-weight: bold;
+            color: #ff4444;
+            text-shadow: 0 0 20px rgba(255, 68, 68, 0.8),
+                         0 0 40px rgba(255, 68, 68, 0.5);
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+
+        .title-subtitle {
+            font-size: 24px;
+            color: #999;
+            margin-bottom: 40px;
+        }
+
+        .title-info {
+            margin: 15px 0;
+            font-size: 18px;
+            color: #ccc;
+        }
+
+        .title-info strong {
+            color: #fff;
+        }
+
+        .start-button {
+            margin-top: 40px;
+            padding: 15px 40px;
+            font-size: 24px;
+            font-weight: bold;
+            background: #8b0000;
+            color: white;
+            border: 3px solid #ff4444;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+        }
+
+        .start-button:hover {
+            background: #ff4444;
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.8);
+        }
+    </style>
+</head>
+<body>
+    <!-- Title Screen -->
+    <div id="titleScreen">
+        <div class="title-content">
+            <div class="game-title">LAST STAND: REVIVAL</div>
+            <div class="title-subtitle">A Zombie Survival Game</div>
+            
+            <div class="title-info">
+                <strong>Created by:</strong> Jimmy Dang
+            </div>
+            <div class="title-info">
+                <strong>Course:</strong> CSC 4821 Fundamentals of Game Programming
+            </div>
+            <div class="title-info">
+                <strong>Semester:</strong> Fall 2025
+            </div>
+            <div class="title-info">
+                <strong>Professor:</strong> Dr. Michael Weeks
+            </div>
+            
+            <button class="start-button" onclick="startGame()">START GAME</button>
+        </div>
+    </div>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1200" height="800"></canvas>
+        
+        <div id="ui">
+            <div>Health: <span id="health">100</span></div>
+            <div>Weapon: <span id="currentWeapon">Fists</span></div>
+            <div>Ammo: <span id="ammo">∞</span></div>
+            <div>Zombies: <span id="zombieCount">0</span></div>
+            <div>Wallet: $<span id="wallet">0</span></div>
+        </div>
+
+        <div id="lootFeed" class="minimized">
+            <div id="lootFeedHeader">
+                <div id="lootFeedTitle">LOOT FEED</div>
+                <button id="minimizeBtn">+</button>
+            </div>
+        </div>
+
+        <div id="equipmentBar">
+            <div class="equipment-slot active" id="slot0">
+                <div class="equipment-key">1</div>
+                <div class="equipment-name">Fists</div>
+            </div>
+            <div class="equipment-slot" id="slot1">
+                <div class="equipment-key">2</div>
+                <div class="equipment-name empty">Empty</div>
+                <div class="equipment-ammo"></div>
+            </div>
+            <div class="equipment-slot" id="slot2">
+                <div class="equipment-key">3</div>
+                <div class="equipment-name empty">Empty</div>
+                <div class="equipment-ammo"></div>
+            </div>
+            <div class="equipment-slot" id="slot3">
+                <div class="equipment-key">4</div>
+                <div class="equipment-name empty">Empty</div>
+                <div class="equipment-ammo"></div>
+            </div>
+            <div class="equipment-slot" id="slot4">
+                <div class="equipment-key">5</div>
+                <div class="equipment-name empty">Empty</div>
+                <div class="equipment-ammo"></div>
+            </div>
+        </div>
+
+        <div id="inventory">
+            <h3>Inventory:</h3>
+            <div id="inventoryList"></div>
+        </div>
+
+        <div class="controls">
+            WASD/Arrows: Move | Mouse: Aim | Left Click: Attack | E: Loot | R: Reload | 1-5: Switch Weapons
+        </div>
+    </div>
+
+    <div id="gameOver">
+        <h2 id="gameOverText">GAME OVER</h2>
+        <p id="gameOverStats"></p>
+        <div class="gameOverButtons">
+            <button id="nextMapBtn" class="btn" style="display:none;">NEXT MAP</button>
+            <button id="shopBtn" class="btn" style="display:none;">SHOP</button>
+            <button id="restartBtn" class="btn">RESTART</button>
+        </div>
+    </div>
+
+    <div id="shop">
+        <h2>SHOP</h2>
+        <div id="shopWallet">Wallet: $<span id="shopWalletAmount">0</span></div>
+        
+        <div class="shop-category">
+            <h3>Weapons</h3>
+            <div class="shop-items" id="weaponShop"></div>
+        </div>
+        
+        <div class="shop-category">
+            <h3>Health Items</h3>
+            <div class="shop-items" id="healthShop"></div>
+        </div>
+        
+        <button id="closeShopBtn">CLOSE SHOP</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Game state
+        const game = {
+            running: true,
+            player: null,
+            zombies: [],
+            lootContainers: [],
+            walls: [],
+            obstacles: [],
+            extractionZone: null,
+            zombiesKilled: 0,
+            itemsLooted: 0,
+            wallet: 0,
+            currentMap: 0,
+            camera: {
+                x: 0,
+                y: 0,
+                targetX: 0,
+                targetY: 0,
+                smoothing: 0.1
+            },
+            screenShake: {
+                intensity: 0,
+                duration: 0
+            },
+            muzzleFlashes: [],
+            damageNumbers: [],
+            bloodSplatters: [],
+            zombieCorpses: []
+        };
+
+        // Shop inventory
+        const SHOP_ITEMS = {
+            weapons: [
+                { name: 'Baseball Bat', type: 'melee', damage: 20, range: 70, speed: 0.7, price: 100 },
+                { name: 'Crowbar', type: 'melee', damage: 25, range: 65, speed: 0.75, price: 150 },
+                { name: 'Katana', type: 'melee', damage: 35, range: 75, speed: 0.6, price: 250 },
+                { name: 'Pistol', type: 'gun', damage: 25, range: 300, speed: 0.5, ammo: 0, maxAmmo: 36, magazineSize: 8, reloadTime: 1.5, ammoType: 'Pistol Ammo', price: 200 },
+                { name: 'Shotgun', type: 'gun', damage: 40, range: 200, speed: 1.2, ammo: 0, maxAmmo: 18, magazineSize: 2, reloadTime: 2.0, ammoType: 'Shotgun Shells', spread: 15, price: 350 },
+                { name: 'SMG', type: 'gun', damage: 15, range: 250, speed: 0.2, ammo: 0, maxAmmo: 90, magazineSize: 16, reloadTime: 2.5, ammoType: 'SMG Ammo', price: 400 },
+            ],
+            health: [
+                { name: 'Bandage', healing: 20, price: 30 },
+                { name: 'First Aid Kit', healing: 50, price: 75 },
+                { name: 'Med Pack', healing: 100, price: 150 },
+            ]
+        };
+
+        // Map configurations
+        const MAPS = [
+            {
+                name: "Warehouse",
+                playerStart: { x: 600, y: 500 },
+                colorPalette: {
+                    floor: '#3a3a3a',
+                    walls: '#1a1a1a',
+                    obstacles: '#5a5a5a',
+                    accent: '#7a7a7a'
+                },
+                // Rectangular warehouse building (800x600) with opening
+                walls: [
+                    // Top wall
+                    { x: 200, y: 200, width: 800, height: 30 },
+                    // Left wall
+                    { x: 200, y: 200, width: 30, height: 600 },
+                    // Right wall - with WIDER gap for exit (150px gap)
+                    { x: 970, y: 200, width: 30, height: 325 }, // Top section
+                    { x: 970, y: 675, width: 30, height: 125 }, // Bottom section (150px gap between)
+                    // Bottom wall
+                    { x: 200, y: 770, width: 800, height: 30 },
+                ],
+                obstacles: [
+                    // Large storage shelves - left side
+                    { x: 280, y: 280, width: 120, height: 30 },
+                    { x: 280, y: 360, width: 120, height: 30 },
+                    { x: 280, y: 440, width: 120, height: 30 },
+                    { x: 280, y: 520, width: 120, height: 30 },
+                    { x: 280, y: 600, width: 120, height: 30 },
+                    
+                    // Center-right storage shelves
+                    { x: 720, y: 280, width: 120, height: 30 },
+                    { x: 720, y: 360, width: 120, height: 30 },
+                    { x: 720, y: 440, width: 120, height: 30 },
+                    { x: 720, y: 520, width: 120, height: 30 },
+                    { x: 720, y: 600, width: 120, height: 30 },
+                ],
+                furniture: [
+                    // Shipping crates - corners and sides
+                    { type: 'crate', x: 250, y: 700, width: 60, height: 60 },
+                    { type: 'crate', x: 320, y: 700, width: 60, height: 60 },
+                    { type: 'crate', x: 880, y: 250, width: 60, height: 60 },
+                    { type: 'crate', x: 880, y: 320, width: 60, height: 60 },
+                    
+                    // Pallets - sides
+                    { type: 'pallet', x: 450, y: 250, width: 80, height: 50 },
+                    { type: 'pallet', x: 450, y: 700, width: 80, height: 50 },
+                    
+                    // Barrels - scattered
+                    { type: 'barrel', x: 850, y: 700, radius: 22 },
+                    { type: 'barrel', x: 250, y: 250, radius: 22 },
+                ],
+                lootPositions: [
+                    { x: 350, y: 350, type: 'ammo' },
+                    { x: 550, y: 300, type: 'regular' },
+                    { x: 350, y: 650, type: 'ammo' },
+                    { x: 780, y: 400, type: 'golden' },
+                    { x: 650, y: 700, type: 'regular' },
+                ],
+                extractionZone: { x: 1100, y: 525, width: 120, height: 150 }
+            },
+            {
+                name: "Office Complex",
+                playerStart: { x: 600, y: 400 },
+                colorPalette: {
+                    floor: '#d9d9d9',
+                    walls: '#a8a8a8',
+                    obstacles: '#8b7d6b',
+                    accent: '#6d5d4a'
+                },
+                obstacles: [
+                    // Cubicle walls - row 1
+                    { x: 300, y: 250, width: 15, height: 120 },
+                    { x: 450, y: 250, width: 15, height: 120 },
+                    { x: 600, y: 250, width: 15, height: 120 },
+                    { x: 750, y: 250, width: 15, height: 120 },
+                    
+                    // Cubicle walls - row 2
+                    { x: 300, y: 450, width: 15, height: 120 },
+                    { x: 450, y: 450, width: 15, height: 120 },
+                    { x: 600, y: 450, width: 15, height: 120 },
+                    { x: 750, y: 450, width: 15, height: 120 },
+                    
+                    // Horizontal dividers
+                    { x: 300, y: 250, width: 150, height: 15 },
+                    { x: 450, y: 250, width: 150, height: 15 },
+                    { x: 600, y: 250, width: 150, height: 15 },
+                    { x: 300, y: 450, width: 150, height: 15 },
+                    { x: 450, y: 450, width: 150, height: 15 },
+                    { x: 600, y: 450, width: 150, height: 15 },
+                    
+                    // Conference room walls (open top for access)
+                    { x: 1050, y: 300, width: 20, height: 250 },
+                    { x: 1280, y: 300, width: 20, height: 250 },
+                    { x: 1050, y: 530, width: 250, height: 20 },
+                    
+                    // Hallway dividers
+                    { x: 200, y: 200, width: 20, height: 100 },
+                    { x: 950, y: 200, width: 20, height: 100 },
+                ],
+                furniture: [
+                    // Desks in cubicles - row 1
+                    { type: 'desk', x: 320, y: 280, width: 90, height: 60 },
+                    { type: 'desk', x: 470, y: 280, width: 90, height: 60 },
+                    { type: 'desk', x: 620, y: 280, width: 90, height: 60 },
+                    { type: 'desk', x: 770, y: 280, width: 90, height: 60 },
+                    
+                    // Desks in cubicles - row 2
+                    { type: 'desk', x: 320, y: 480, width: 90, height: 60 },
+                    { type: 'desk', x: 470, y: 480, width: 90, height: 60 },
+                    { type: 'desk', x: 620, y: 480, width: 90, height: 60 },
+                    { type: 'desk', x: 770, y: 480, width: 90, height: 60 },
+                    
+                    // Office chairs
+                    { type: 'chair', x: 360, y: 320, radius: 15 },
+                    { type: 'chair', x: 510, y: 320, radius: 15 },
+                    { type: 'chair', x: 660, y: 320, radius: 15 },
+                    { type: 'chair', x: 360, y: 520, radius: 15 },
+                    { type: 'chair', x: 510, y: 520, radius: 15 },
+                    
+                    // Filing cabinets
+                    { type: 'cabinet', x: 250, y: 350, width: 40, height: 60 },
+                    { type: 'cabinet', x: 900, y: 350, width: 40, height: 60 },
+                    { type: 'cabinet', x: 250, y: 550, width: 40, height: 60 },
+                    
+                    // Conference table (large desk)
+                    { type: 'desk', x: 1100, y: 380, width: 150, height: 100 },
+                    
+                    // Water cooler
+                    { type: 'cooler', x: 1000, y: 250, radius: 18 },
+                    
+                    // Printer/copier (cabinet)
+                    { type: 'cabinet', x: 200, y: 450, width: 60, height: 50 },
+                ],
+                lootPositions: [
+                    { x: 350, y: 300, type: 'ammo' },
+                    { x: 650, y: 300, type: 'regular' },
+                    { x: 500, y: 500, type: 'ammo' },
+                    { x: 1150, y: 420, type: 'golden' },
+                    { x: 850, y: 450, type: 'regular' },
+                    { x: 280, y: 600, type: 'regular' },
+                ],
+                extractionZone: { x: 100, y: 100, width: 120, height: 120 }
+            },
+            {
+                name: "Shopping Mall",
+                playerStart: { x: 400, y: 600 },
+                colorPalette: {
+                    floor: '#f5f5dc',
+                    walls: '#8b7355',
+                    obstacles: '#a0522d',
+                    accent: '#cd853f'
+                },
+                // Mall building with store fronts
+                walls: [
+                    // Outer walls
+                    { x: 200, y: 200, width: 800, height: 30 }, // Top
+                    { x: 200, y: 200, width: 30, height: 500 }, // Left
+                    { x: 970, y: 200, width: 30, height: 500 }, // Right
+                    { x: 200, y: 670, width: 300, height: 30 }, // Bottom left
+                    { x: 700, y: 670, width: 300, height: 30 }, // Bottom right (gap for exit)
+                    
+                    // Store dividers
+                    { x: 300, y: 280, width: 150, height: 15 },
+                    { x: 550, y: 280, width: 140, height: 15 },
+                    { x: 770, y: 280, width: 150, height: 15 },
+                ],
+                obstacles: [
+                    // Store counters
+                    { x: 320, y: 320, width: 100, height: 30 },
+                    { x: 570, y: 320, width: 90, height: 30 },
+                    { x: 790, y: 320, width: 100, height: 30 },
+                    
+                    // Mall benches
+                    { x: 350, y: 500, width: 80, height: 20 },
+                    { x: 550, y: 500, width: 80, height: 20 },
+                    { x: 750, y: 500, width: 80, height: 20 },
+                ],
+                furniture: [
+                    // Store displays
+                    { type: 'display', x: 330, y: 370, width: 50, height: 30 },
+                    { type: 'display', x: 400, y: 370, width: 50, height: 30 },
+                    { type: 'display', x: 580, y: 370, width: 50, height: 30 },
+                    { type: 'display', x: 650, y: 370, width: 50, height: 30 },
+                    { type: 'display', x: 800, y: 370, width: 50, height: 30 },
+                    { type: 'display', x: 870, y: 370, width: 50, height: 30 },
+                    
+                    // Benches
+                    { type: 'bench', x: 270, y: 450, width: 70, height: 30 },
+                    { type: 'bench', x: 500, y: 450, width: 70, height: 30 },
+                    { type: 'bench', x: 650, y: 450, width: 70, height: 30 },
+                    { type: 'bench', x: 850, y: 450, width: 70, height: 30 },
+                    
+                    // Planters (white)
+                    { type: 'planter', x: 450, y: 560, radius: 25 },
+                    { type: 'planter', x: 600, y: 560, radius: 25 },
+                    { type: 'planter', x: 750, y: 560, radius: 25 },
+                    
+                    // Trash bins
+                    { type: 'bin', x: 250, y: 560, radius: 18 },
+                    { type: 'bin', x: 950, y: 560, radius: 18 },
+                    { type: 'bin', x: 350, y: 250, radius: 18 },
+                    { type: 'bin', x: 850, y: 250, radius: 18 },
+                ],
+                lootPositions: [
+                    { x: 380, y: 340, type: 'ammo' },
+                    { x: 630, y: 340, type: 'regular' },
+                    { x: 850, y: 340, type: 'ammo' },
+                    { x: 600, y: 480, type: 'golden' },
+                    { x: 300, y: 600, type: 'regular' },
+                ],
+                extractionZone: { x: 540, y: 720, width: 120, height: 80 }
+            },
+            {
+                name: "Parking Garage",
+                playerStart: { x: 450, y: 420 },
+                colorPalette: {
+                    floor: '#2f2f2f',
+                    walls: '#1a1a1a',
+                    obstacles: '#505050',
+                    accent: '#606060'
+                },
+                // Parking garage structure
+                walls: [
+                    // Outer walls
+                    { x: 200, y: 200, width: 800, height: 30 }, // Top
+                    { x: 200, y: 200, width: 30, height: 500 }, // Left
+                    { x: 970, y: 200, width: 30, height: 200 }, // Right top
+                    { x: 970, y: 500, width: 30, height: 200 }, // Right bottom (gap for exit)
+                    { x: 200, y: 670, width: 800, height: 30 }, // Bottom
+                ],
+                obstacles: [
+                    // Parking space dividers
+                    { x: 250, y: 280, width: 140, height: 15 },
+                    { x: 250, y: 380, width: 140, height: 15 },
+                    { x: 250, y: 480, width: 140, height: 15 },
+                    { x: 250, y: 580, width: 140, height: 15 },
+                    
+                    { x: 520, y: 280, width: 140, height: 15 },
+                    { x: 520, y: 380, width: 140, height: 15 },
+                    { x: 520, y: 480, width: 140, height: 15 },
+                    { x: 520, y: 580, width: 140, height: 15 },
+                    
+                    { x: 790, y: 280, width: 140, height: 15 },
+                    { x: 790, y: 380, width: 140, height: 15 },
+                    { x: 790, y: 480, width: 140, height: 15 },
+                ],
+                furniture: [
+                    // Parked cars (staggered)
+                    { type: 'car', x: 260, y: 300, width: 80, height: 60 },
+                    { type: 'car', x: 300, y: 400, width: 80, height: 60 },
+                    { type: 'car', x: 260, y: 500, width: 80, height: 60 },
+                    { type: 'car', x: 300, y: 600, width: 80, height: 60 },
+                    
+                    { type: 'car', x: 530, y: 300, width: 80, height: 60 },
+                    { type: 'car', x: 570, y: 400, width: 80, height: 60 },
+                    { type: 'car', x: 530, y: 500, width: 80, height: 60 },
+                    { type: 'car', x: 570, y: 600, width: 80, height: 60 },
+                    
+                    { type: 'car', x: 800, y: 300, width: 80, height: 60 },
+                    { type: 'car', x: 840, y: 400, width: 80, height: 60 },
+                    { type: 'car', x: 800, y: 500, width: 80, height: 60 },
+                    
+                    // Support pillars
+                    { type: 'pillar', x: 450, y: 350, radius: 25 },
+                    { type: 'pillar', x: 720, y: 350, radius: 25 },
+                    { type: 'pillar', x: 450, y: 550, radius: 25 },
+                    { type: 'pillar', x: 720, y: 550, radius: 25 },
+                    
+                    // Oil stains
+                    { type: 'stain', x: 350, y: 320, radius: 20 },
+                    { type: 'stain', x: 620, y: 450, radius: 20 },
+                    { type: 'stain', x: 880, y: 580, radius: 20 },
+                ],
+                lootPositions: [
+                    { x: 280, y: 250, type: 'ammo' },
+                    { x: 550, y: 350, type: 'regular' },
+                    { x: 350, y: 550, type: 'ammo' },
+                    { x: 820, y: 350, type: 'golden' },
+                    { x: 650, y: 620, type: 'regular' },
+                ],
+                extractionZone: { x: 1050, y: 420, width: 120, height: 120 }
+            },
+            {
+                name: "Apartment Building",
+                playerStart: { x: 350, y: 500 },
+                colorPalette: {
+                    floor: '#d2b48c',
+                    walls: '#a0826d',
+                    obstacles: '#8b7355',
+                    accent: '#6b5b47'
+                },
+                obstacles: [
+                    { x: 200, y: 100, width: 20, height: 500 },
+                    { x: 450, y: 100, width: 20, height: 500 },
+                    { x: 700, y: 100, width: 20, height: 500 },
+                    { x: 220, y: 250, width: 210, height: 20 },
+                    { x: 470, y: 350, width: 210, height: 20 },
+                    { x: 220, y: 450, width: 210, height: 20 },
+                ],
+                furniture: [
+                    // Couches
+                    { type: 'couch', x: 100, y: 300, width: 60, height: 100 },
+                    { type: 'couch', x: 550, y: 250, width: 60, height: 100 },
+                    // Tables
+                    { type: 'table', x: 280, y: 180, width: 70, height: 50 },
+                    { type: 'table', x: 530, y: 450, width: 70, height: 50 },
+                    // Beds
+                    { type: 'bed', x: 250, y: 350, width: 100, height: 70 },
+                    { type: 'bed', x: 500, y: 500, width: 100, height: 70 },
+                    // Dressers
+                    { type: 'dresser', x: 350, y: 300, width: 50, height: 40 },
+                    { type: 'dresser', x: 780, y: 200, width: 50, height: 40 },
+                    // Potted plants
+                    { type: 'plant', x: 150, y: 450, radius: 18 },
+                    { type: 'plant', x: 600, y: 150, radius: 18 },
+                ],
+                lootPositions: [
+                    { x: 100, y: 200, type: 'ammo' },
+                    { x: 300, y: 150, type: 'ammo' },
+                    { x: 550, y: 200, type: 'regular' },
+                    { x: 800, y: 300, type: 'golden' },
+                    { x: 350, y: 550, type: 'regular' },
+                ],
+                extractionZone: { x: 800, y: 50, width: 100, height: 100 }
+            }
+        ];
+
+        // Loot tables
+        const LOOT_TABLES = {
+            ammo: [
+                { name: 'Pistol Ammo', amount: 12, for: 'Pistol' },
+                { name: 'Shotgun Shells', amount: 6, for: 'Shotgun' },
+                { name: 'SMG Ammo', amount: 30, for: 'SMG' },
+            ],
+            junk: {
+                common: [
+                    { name: 'Empty Can', value: 1, rarity: 'Common' },
+                    { name: 'Broken Glass', value: 1, rarity: 'Common' },
+                    { name: 'Old Newspaper', value: 1, rarity: 'Common' },
+                    { name: 'Dirty Rag', value: 1, rarity: 'Common' },
+                    { name: 'Plastic Bottle', value: 2, rarity: 'Common' },
+                    { name: 'Rusty Nail', value: 2, rarity: 'Common' },
+                    { name: 'Cardboard Scrap', value: 1, rarity: 'Common' },
+                ],
+                uncommon: [
+                    { name: 'Scrap Metal', value: 5, rarity: 'Uncommon' },
+                    { name: 'Copper Wire', value: 8, rarity: 'Uncommon' },
+                    { name: 'Duct Tape', value: 10, rarity: 'Uncommon' },
+                    { name: 'Light Bulb', value: 6, rarity: 'Uncommon' },
+                    { name: 'Batteries (Dead)', value: 7, rarity: 'Uncommon' },
+                    { name: 'Old Wrench', value: 9, rarity: 'Uncommon' },
+                ],
+                rare: [
+                    { name: 'Gold Ring', value: 50, rarity: 'Rare' },
+                    { name: 'Silver Watch', value: 45, rarity: 'Rare' },
+                    { name: 'Diamond Earring', value: 75, rarity: 'Rare' },
+                    { name: 'Antique Coin', value: 60, rarity: 'Rare' },
+                    { name: 'Vintage Lighter', value: 40, rarity: 'Rare' },
+                ],
+                legendary: [
+                    { name: 'Military Dog Tags', value: 150, rarity: 'Legendary' },
+                    { name: 'Gold Necklace', value: 200, rarity: 'Legendary' },
+                    { name: 'Rare Gem', value: 250, rarity: 'Legendary' },
+                    { name: 'Family Heirloom', value: 180, rarity: 'Legendary' },
+                ]
+            }
+        };
+
+        // Blood Splatter class
+        class BloodSplatter {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.particles = [];
+                
+                // Reduced from 8 to 5 particles for performance
+                for (let i = 0; i < 5; i++) {
+                    const angle = (Math.PI * 2 * i) / 5;
+                    const speed = Math.random() * 2 + 1.5;
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: Math.cos(angle) * speed,
+                        vy: Math.sin(angle) * speed,
+                        size: Math.random() * 3 + 2,
+                        life: 20 // Reduced from 30 for performance
+                    });
+                }
+            }
+
+            update() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vx *= 0.95; // Friction
+                    p.vy *= 0.95;
+                    p.life--;
+                    
+                    if (p.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            draw() {
+                this.particles.forEach(p => {
+                    const alpha = p.life / 20;
+                    ctx.fillStyle = `rgba(139, 0, 0, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+
+            isDead() {
+                return this.particles.length === 0;
+            }
+        }
+
+        // Zombie Corpse class (fading death animation)
+        class ZombieCorpse {
+            constructor(x, y, radius) {
+                this.x = x;
+                this.y = y;
+                this.radius = radius;
+                this.alpha = 1;
+                this.fadeSpeed = 0.02;
+            }
+
+            update() {
+                this.alpha -= this.fadeSpeed;
+            }
+
+            draw() {
+                if (this.alpha <= 0) return;
+                
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                
+                // Draw corpse (same as zombie but darker)
+                ctx.fillStyle = '#1a2e0a';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+
+            isDead() {
+                return this.alpha <= 0;
+            }
+        }
+
+        // Damage Number class
+        class DamageNumber {
+            constructor(x, y, damage) {
+                this.x = x;
+                this.y = y;
+                this.damage = damage;
+                this.life = 40; // Reduced from 60 frames
+                this.offsetY = 0;
+            }
+
+            update() {
+                this.life -= 2; // Faster fade
+                this.offsetY -= 1.5; // Float upward faster
+            }
+
+            draw() {
+                const alpha = this.life / 40;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = '#ff4444';
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeText(this.damage.toString(), this.x, this.y + this.offsetY);
+                ctx.fillText(this.damage.toString(), this.x, this.y + this.offsetY);
+                ctx.restore();
+            }
+        }
+
+        // Muzzle Flash class
+        class MuzzleFlash {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.life = 3; // Very brief
+                this.radius = 15;
+            }
+
+            update() {
+                this.life--;
+            }
+
+            draw() {
+                const alpha = this.life / 3;
+                ctx.save();
+                ctx.globalAlpha = alpha;
+                
+                // Outer glow
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+                gradient.addColorStop(0, '#fff');
+                gradient.addColorStop(0.3, '#ffaa00');
+                gradient.addColorStop(1, 'rgba(255, 170, 0, 0)');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+
+        // Player class
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 20;
+                this.speed = 3;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.angle = 0;
+                this.inventory = [];
+                this.currentWeaponIndex = -1; // -1 means fists
+                this.attackCooldown = 0;
+                this.damageCooldown = 0;
+                this.meleeSwingFrame = 0;
+                this.meleeDamageFrame = -1; // When to apply damage during swing
+                this.isReloading = false;
+                this.reloadProgress = 0;
+                this.reloadTimeTotal = 0;
+            }
+
+            getCurrentWeapon() {
+                if (this.currentWeaponIndex === -1) {
+                    return { name: 'Fists', type: 'melee', damage: 10, range: 40, speed: 0.5 };
+                }
+                
+                // Get all weapons from inventory
+                const weapons = this.inventory.filter(item => item.type === 'melee' || item.type === 'gun');
+                if (this.currentWeaponIndex < weapons.length) {
+                    const weapon = weapons[this.currentWeaponIndex];
+                    // Initialize magazine if not present
+                    if (weapon.type === 'gun' && weapon.magazine === undefined) {
+                        weapon.magazine = 0;
+                    }
+                    return weapon;
+                }
+                
+                // Default to fists if index is out of bounds
+                this.currentWeaponIndex = -1;
+                return { name: 'Fists', type: 'melee', damage: 10, range: 40, speed: 0.5 };
+            }
+
+            reload() {
+                const weapon = this.getCurrentWeapon();
+                if (weapon.type !== 'gun' || this.isReloading) return;
+                
+                // Check if magazine is full or no reserve ammo
+                if (weapon.magazine >= weapon.magazineSize || weapon.ammo <= 0) return;
+                
+                // Start reload
+                this.isReloading = true;
+                this.reloadProgress = 0;
+                this.reloadTimeTotal = weapon.reloadTime * 60; // Convert to frames
+                playSound('reload');
+            }
+
+            update(keys, mousePos) {
+                // Movement
+                let dx = 0, dy = 0;
+                if (keys['w'] || keys['ArrowUp']) dy -= this.speed;
+                if (keys['s'] || keys['ArrowDown']) dy += this.speed;
+                if (keys['a'] || keys['ArrowLeft']) dx -= this.speed;
+                if (keys['d'] || keys['ArrowRight']) dx += this.speed;
+
+                // Normalize diagonal movement
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.707;
+                    dy *= 0.707;
+                }
+
+                // Check collision before moving
+                const newX = this.x + dx;
+                const newY = this.y + dy;
+                if (!this.checkCollision(newX, newY)) {
+                    this.x = newX;
+                    this.y = newY;
+                }
+
+                // Keep player in bounds
+                this.x = Math.max(this.radius, Math.min(canvas.width - this.radius, this.x));
+                this.y = Math.max(this.radius, Math.min(canvas.height - this.radius, this.y));
+
+                // Aim towards mouse
+                this.angle = Math.atan2(mousePos.y - this.y, mousePos.x - this.x);
+
+                // Handle reloading
+                if (this.isReloading) {
+                    this.reloadProgress++;
+                    
+                    if (this.reloadProgress >= this.reloadTimeTotal) {
+                        // Reload complete
+                        const weapon = this.getCurrentWeapon();
+                        if (weapon.type === 'gun') {
+                            const ammoNeeded = weapon.magazineSize - weapon.magazine;
+                            const ammoToLoad = Math.min(ammoNeeded, weapon.ammo);
+                            weapon.magazine += ammoToLoad;
+                            weapon.ammo -= ammoToLoad;
+                        }
+                        
+                        this.isReloading = false;
+                        this.reloadProgress = 0;
+                        updateUI();
+                    }
+                }
+
+                // Handle automatic fire for SMG
+                const weapon = this.getCurrentWeapon();
+                if (mouseDown && weapon.type === 'gun' && weapon.name === 'SMG' && !this.isReloading) {
+                    // Automatic fire while holding mouse
+                    if (this.attackCooldown === 0) {
+                        this.attack();
+                    }
+                }
+
+                // Update cooldowns
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                if (this.damageCooldown > 0) this.damageCooldown--;
+                
+                // Update melee swing animation
+                if (this.meleeSwingFrame > 0) {
+                    this.meleeSwingFrame--;
+                    
+                    // Apply damage at the right moment in the swing
+                    if (this.meleeSwingFrame === this.meleeDamageFrame) {
+                        const weapon = this.getCurrentWeapon();
+                        if (weapon.type === 'melee') {
+                            this.meleeAttack(weapon);
+                        }
+                    }
+                }
+            }
+
+            checkCollision(x, y) {
+                const checkRadius = this.radius + 50; // Only check nearby objects
+                
+                // Quick AABB check for walls
+                for (let i = 0; i < game.walls.length; i++) {
+                    const wall = game.walls[i];
+                    // Skip if too far away (cheap check)
+                    if (x + checkRadius < wall.x || x - checkRadius > wall.x + wall.width ||
+                        y + checkRadius < wall.y || y - checkRadius > wall.y + wall.height) {
+                        continue;
+                    }
+                    if (this.rectCircleCollision(wall, { x, y, radius: this.radius })) {
+                        return true;
+                    }
+                }
+                
+                // Quick AABB check for obstacles
+                for (let i = 0; i < game.obstacles.length; i++) {
+                    const obs = game.obstacles[i];
+                    // Skip if too far away (cheap check)
+                    if (x + checkRadius < obs.x || x - checkRadius > obs.x + obs.width ||
+                        y + checkRadius < obs.y || y - checkRadius > obs.y + obs.height) {
+                        continue;
+                    }
+                    if (this.rectCircleCollision(obs, { x, y, radius: this.radius })) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+
+            rectCircleCollision(rect, circle) {
+                // Fast path: if circle center is far from rect, no collision
+                const dx = circle.x - Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+                const dy = circle.y - Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+                return (dx * dx + dy * dy) < (circle.radius * circle.radius);
+            }
+
+            attack() {
+                const weapon = this.getCurrentWeapon();
+                if (this.attackCooldown > 0 || this.isReloading) return;
+
+                if (weapon.type === 'gun') {
+                    // Check if magazine has ammo
+                    if (weapon.magazine <= 0) {
+                        // Auto-reload if reserve ammo available
+                        if (weapon.ammo > 0) {
+                            this.reload();
+                        }
+                        return;
+                    }
+                    
+                    // Fire gun from magazine
+                    weapon.magazine--;
+                    this.shootBullet(weapon);
+                    // Play specific gun sound
+                    if (weapon.name === 'Pistol') {
+                        playSound('pistol');
+                    } else if (weapon.name === 'Shotgun') {
+                        playSound('shotgun');
+                    } else if (weapon.name === 'SMG') {
+                        playSound('smg');
+                    }
+                } else {
+                    // Melee weapons start swing animation - damage comes later
+                    // Use punch.mp3 for fists, melee.mp3 for weapons
+                    if (weapon.name === 'Fists') {
+                        playSound('punch');
+                    } else {
+                        playSound('melee');
+                    }
+                    this.meleeSwingFrame = 20; // Slower swing animation (was 10)
+                    this.meleeDamageFrame = 10; // Damage happens at frame 10 (mid-swing)
+                }
+
+                this.attackCooldown = weapon.speed * 60;
+                updateUI();
+            }
+
+            meleeAttack(weapon) {
+                // Create attack arc in front of player
+                const attackAngle = 0.5; // 0.5 radians = ~30 degrees on each side
+                
+                for (let zombie of game.zombies) {
+                    // Calculate angle to zombie
+                    const angleToZombie = Math.atan2(zombie.y - this.y, zombie.x - this.x);
+                    
+                    // Calculate angle difference (normalized to -PI to PI)
+                    let angleDiff = angleToZombie - this.angle;
+                    while (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    while (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+                    
+                    // Check if zombie is within attack arc
+                    const inArc = Math.abs(angleDiff) < attackAngle;
+                    
+                    // Check distance
+                    const dist = Math.hypot(zombie.x - this.x, zombie.y - this.y);
+                    const inRange = dist < weapon.range + zombie.radius;
+                    
+                    if (inArc && inRange) {
+                        zombie.takeDamage(weapon.damage);
+                        
+                        // Visual feedback - flash the zombie
+                        zombie.hitFlash = 5;
+                    }
+                }
+            }
+
+            shootBullet(weapon) {
+                const bulletX = this.x + Math.cos(this.angle) * (this.radius + 15);
+                const bulletY = this.y + Math.sin(this.angle) * (this.radius + 15);
+                
+                const bullet = {
+                    x: bulletX,
+                    y: bulletY,
+                    angle: this.angle,
+                    speed: 10,
+                    damage: weapon.damage,
+                    range: weapon.range,
+                    traveled: 0
+                };
+
+                if (weapon.spread) {
+                    // Shotgun spread
+                    for (let i = -2; i <= 2; i++) {
+                        const spreadBullet = {
+                            ...bullet,
+                            angle: bullet.angle + (i * weapon.spread * Math.PI / 180)
+                        };
+                        game.bullets = game.bullets || [];
+                        game.bullets.push(spreadBullet);
+                    }
+                    // Shotgun screen shake
+                    addScreenShake(8, 10);
+                } else {
+                    game.bullets = game.bullets || [];
+                    game.bullets.push(bullet);
+                    // Regular gun screen shake
+                    addScreenShake(3, 5);
+                }
+                
+                // Add muzzle flash
+                game.muzzleFlashes.push(new MuzzleFlash(bulletX, bulletY));
+            }
+
+            takeDamage(amount) {
+                if (this.damageCooldown > 0) return;
+                this.health -= amount;
+                this.damageCooldown = 30; // Half second invulnerability
+                
+                // Add damage number
+                game.damageNumbers.push(new DamageNumber(this.x, this.y - this.radius, amount));
+                
+                // Screen shake when taking damage
+                addScreenShake(5, 8);
+                
+                if (this.health <= 0) {
+                    gameOver(false);
+                }
+                updateUI();
+            }
+
+            draw() {
+                // Draw body
+                ctx.fillStyle = this.damageCooldown > 0 && Math.floor(Date.now() / 100) % 2 ? '#ff6b6b' : '#ffd93d';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Get current weapon
+                const weapon = this.getCurrentWeapon();
+
+                // Draw equipped weapon
+                if (weapon.name !== 'Fists') {
+                    if (weapon.type === 'melee') {
+                        // Melee weapons swing from 45 degrees left to aim direction during attack
+                        let swingAngle = this.angle;
+                        if (this.meleeSwingFrame > 0) {
+                            // Swing from -45 degrees to current angle
+                            // meleeSwingFrame goes from 20 down to 0
+                            const swingProgress = (20 - this.meleeSwingFrame) / 20;
+                            const startAngle = this.angle - (Math.PI / 4); // 45 degrees left
+                            const endAngle = this.angle;
+                            swingAngle = startAngle + (swingProgress * (Math.PI / 4));
+                        } else {
+                            // Rest position - 45 degrees to the left
+                            swingAngle = this.angle - Math.PI / 4;
+                        }
+                        
+                        const weaponLength = weapon.range * 0.6;
+                        
+                        // Position weapon handle at left hand location
+                        const leftHandAngle = this.angle - 0.4;
+                        const handDist = this.radius + 5;
+                        const weaponStartX = this.x + Math.cos(leftHandAngle) * handDist;
+                        const weaponStartY = this.y + Math.sin(leftHandAngle) * handDist;
+                        const weaponEndX = weaponStartX + Math.cos(swingAngle) * weaponLength;
+                        const weaponEndY = weaponStartY + Math.sin(swingAngle) * weaponLength;
+                        
+                        // Draw melee weapon as a line/stick
+                        ctx.strokeStyle = '#8b4513';
+                        ctx.lineWidth = 5;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(weaponStartX, weaponStartY);
+                        ctx.lineTo(weaponEndX, weaponEndY);
+                        ctx.stroke();
+                        
+                        // Draw swing arc when attacking
+                        if (this.meleeSwingFrame > 0) {
+                            ctx.strokeStyle = 'rgba(255, 215, 61, 0.3)';
+                            ctx.lineWidth = 2;
+                            ctx.beginPath();
+                            ctx.arc(
+                                this.x, 
+                                this.y, 
+                                weapon.range, 
+                                this.angle - Math.PI / 4, 
+                                this.angle + 0.2
+                            );
+                            ctx.stroke();
+                        }
+                    } else if (weapon.type === 'gun') {
+                        // Different gun models based on weapon type
+                        const gunOffsetY = 10; // Offset to side of body
+                        
+                        ctx.save();
+                        ctx.translate(this.x, this.y);
+                        ctx.rotate(this.angle);
+                        
+                        if (weapon.name === 'Pistol') {
+                            // Pistol - compact and simple
+                            const gunLength = 20;
+                            const gunWidth = 7;
+                            
+                            // Gun body
+                            ctx.fillStyle = '#2c3e50';
+                            ctx.fillRect(5, gunOffsetY - gunWidth/2, gunLength, gunWidth);
+                            
+                            // Slide (top part)
+                            ctx.fillStyle = '#34495e';
+                            ctx.fillRect(5, gunOffsetY - gunWidth/2 - 2, gunLength - 3, 3);
+                            
+                            // Barrel
+                            ctx.fillStyle = '#1a252f';
+                            ctx.fillRect(gunLength + 5, gunOffsetY - 2, 6, 4);
+                            
+                            // Grip
+                            ctx.fillStyle = '#5d4037';
+                            ctx.fillRect(5, gunOffsetY + 2, 5, 8);
+                            
+                        } else if (weapon.name === 'Shotgun') {
+                            // Shotgun - double barrel style from top down with 1.5x longer barrel
+                            const barrelLength = 24; // 1.5x longer (was ~12)
+                            const stockLength = 15;
+                            const receiverLength = 8;
+                            const barrelWidth = 4;
+                            const barrelSpacing = 2;
+                            
+                            // Wooden stock/body
+                            ctx.fillStyle = '#8b4513';
+                            ctx.fillRect(0, gunOffsetY - 3, stockLength, 6);
+                            
+                            // Metal receiver
+                            ctx.fillStyle = '#34495e';
+                            ctx.fillRect(stockLength - 2, gunOffsetY - 4, receiverLength, 8);
+                            
+                            // Double barrels (two parallel rectangles) - extended
+                            const barrelStart = stockLength + receiverLength - 3;
+                            ctx.fillStyle = '#2c3e50';
+                            // Top barrel
+                            ctx.fillRect(barrelStart, gunOffsetY - barrelWidth - barrelSpacing/2, barrelLength, barrelWidth);
+                            // Bottom barrel
+                            ctx.fillRect(barrelStart, gunOffsetY + barrelSpacing/2, barrelLength, barrelWidth);
+                            
+                            // Barrel tips (darker)
+                            ctx.fillStyle = '#1a252f';
+                            ctx.fillRect(barrelStart + barrelLength - 2, gunOffsetY - barrelWidth - barrelSpacing/2, 4, barrelWidth);
+                            ctx.fillRect(barrelStart + barrelLength - 2, gunOffsetY + barrelSpacing/2, 4, barrelWidth);
+                            
+                        } else if (weapon.name === 'SMG') {
+                            // SMG - AR style, longer and tactical
+                            const gunLength = 35;
+                            const gunHeight = 8;
+                            
+                            // Main body (black/grey)
+                            ctx.fillStyle = '#2c3e50';
+                            ctx.fillRect(0, gunOffsetY - gunHeight/2, gunLength, gunHeight);
+                            
+                            // Upper receiver
+                            ctx.fillStyle = '#34495e';
+                            ctx.fillRect(8, gunOffsetY - gunHeight/2 - 3, gunLength - 15, 4);
+                            
+                            // Magazine
+                            ctx.fillStyle = '#1a252f';
+                            ctx.fillRect(10, gunOffsetY + gunHeight/2 - 1, 8, 8);
+                            
+                            // Barrel
+                            ctx.fillStyle = '#2c3e50';
+                            ctx.fillRect(gunLength, gunOffsetY - 2, 8, 4);
+                            
+                            // Muzzle
+                            ctx.fillStyle = '#1a252f';
+                            ctx.fillRect(gunLength + 6, gunOffsetY - 3, 3, 6);
+                            
+                            // Grip
+                            ctx.fillStyle = '#1a252f';
+                            ctx.fillRect(5, gunOffsetY + 2, 6, 10);
+                            
+                            // Stock
+                            ctx.fillStyle = '#34495e';
+                            ctx.fillRect(-8, gunOffsetY - 2, 9, 4);
+                        }
+                        
+                        ctx.restore();
+                    }
+                }
+
+                // Draw hands
+                const handRadius = 7;
+                ctx.fillStyle = '#ffd93d';
+                
+                if (weapon.type === 'gun' && weapon.name !== 'Fists') {
+                    // Two hands on gun
+                    // Back hand (on grip)
+                    const backHandX = this.x + Math.cos(this.angle) * 8;
+                    const backHandY = this.y + Math.sin(this.angle) * 8 + Math.cos(this.angle) * 10;
+                    ctx.beginPath();
+                    ctx.arc(backHandX, backHandY, handRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Front hand (supporting gun)
+                    const frontHandX = this.x + Math.cos(this.angle) * 22;
+                    const frontHandY = this.y + Math.sin(this.angle) * 22 + Math.cos(this.angle) * 10;
+                    ctx.beginPath();
+                    ctx.arc(frontHandX, frontHandY, handRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Normal hand position for fists/melee
+                    const handDist = this.radius + 5;
+                    const angleOffset = 0.4;
+                    
+                    // Left hand - punches forward when using fists
+                    let leftHandDist = handDist;
+                    if (weapon.name === 'Fists' && this.meleeSwingFrame > 0) {
+                        // Punch animation - extend forward and back
+                        const punchProgress = (20 - this.meleeSwingFrame) / 20;
+                        // Go forward then back (sine wave)
+                        const punchExtension = Math.sin(punchProgress * Math.PI) * 15;
+                        leftHandDist = handDist + punchExtension;
+                    }
+                    
+                    const leftX = this.x + Math.cos(this.angle - angleOffset) * leftHandDist;
+                    const leftY = this.y + Math.sin(this.angle - angleOffset) * leftHandDist;
+                    ctx.beginPath();
+                    ctx.arc(leftX, leftY, handRadius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Right hand - stays in place
+                    const rightX = this.x + Math.cos(this.angle + angleOffset) * handDist;
+                    const rightY = this.y + Math.sin(this.angle + angleOffset) * handDist;
+                    ctx.beginPath();
+                    ctx.arc(rightX, rightY, handRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw health bar
+                const barWidth = 40;
+                const barHeight = 5;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 15, barWidth, barHeight);
+                ctx.fillStyle = '#ff4444';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 15, barWidth * (this.health / this.maxHealth), barHeight);
+            }
+        }
+
+        // Pathfinding grid
+        const GRID_SIZE = 25; // Finer grid for better pathfinding
+        let pathfindingGrid = null;
+
+        function initPathfindingGrid() {
+            const cols = Math.ceil(canvas.width / GRID_SIZE);
+            const rows = Math.ceil(canvas.height / GRID_SIZE);
+            pathfindingGrid = [];
+
+            for (let y = 0; y < rows; y++) {
+                pathfindingGrid[y] = [];
+                for (let x = 0; x < cols; x++) {
+                    pathfindingGrid[y][x] = { 
+                        x, y, 
+                        walkable: true,
+                        worldX: x * GRID_SIZE + GRID_SIZE/2,
+                        worldY: y * GRID_SIZE + GRID_SIZE/2
+                    };
+                }
+            }
+
+            // Mark obstacles and walls as unwalkable with small padding
+            const WALL_PADDING = 10; // Reduced padding for performance
+            const allObstacles = [...game.walls, ...game.obstacles];
+            for (let obs of allObstacles) {
+                // Add padding around obstacles
+                const paddedObs = {
+                    x: obs.x - WALL_PADDING,
+                    y: obs.y - WALL_PADDING,
+                    width: obs.width + WALL_PADDING * 2,
+                    height: obs.height + WALL_PADDING * 2
+                };
+                
+                // Check each grid cell to see if it overlaps with the padded obstacle
+                for (let y = 0; y < rows; y++) {
+                    for (let x = 0; x < cols; x++) {
+                        const cellX = x * GRID_SIZE;
+                        const cellY = y * GRID_SIZE;
+                        const cellWidth = GRID_SIZE;
+                        const cellHeight = GRID_SIZE;
+
+                        // Check if this grid cell overlaps with the padded obstacle
+                        if (!(cellX + cellWidth < paddedObs.x || 
+                              cellX > paddedObs.x + paddedObs.width ||
+                              cellY + cellHeight < paddedObs.y ||
+                              cellY > paddedObs.y + paddedObs.height)) {
+                            pathfindingGrid[y][x].walkable = false;
+                        }
+                    }
+                }
+            }
+        }
+
+        function findPath(startX, startY, endX, endY) {
+            if (!pathfindingGrid) return null;
+
+            const cols = pathfindingGrid[0].length;
+            const rows = pathfindingGrid.length;
+
+            const startNode = {
+                x: Math.floor(startX / GRID_SIZE),
+                y: Math.floor(startY / GRID_SIZE)
+            };
+            const endNode = {
+                x: Math.floor(endX / GRID_SIZE),
+                y: Math.floor(endY / GRID_SIZE)
+            };
+
+            // Bounds check
+            if (startNode.x < 0 || startNode.x >= cols || startNode.y < 0 || startNode.y >= rows ||
+                endNode.x < 0 || endNode.x >= cols || endNode.y < 0 || endNode.y >= rows) {
+                return null;
+            }
+
+            // A* pathfinding
+            const openSet = [startNode];
+            const closedSet = new Set();
+            const cameFrom = {};
+            const gScore = {};
+            const fScore = {};
+
+            const key = (node) => `${node.x},${node.y}`;
+            gScore[key(startNode)] = 0;
+            fScore[key(startNode)] = heuristic(startNode, endNode);
+
+            while (openSet.length > 0) {
+                // Get node with lowest fScore
+                openSet.sort((a, b) => (fScore[key(a)] || Infinity) - (fScore[key(b)] || Infinity));
+                const current = openSet.shift();
+                const currentKey = key(current);
+
+                if (current.x === endNode.x && current.y === endNode.y) {
+                    return reconstructPath(cameFrom, current);
+                }
+
+                closedSet.add(currentKey);
+
+                // Check neighbors
+                const neighbors = [
+                    { x: current.x - 1, y: current.y },
+                    { x: current.x + 1, y: current.y },
+                    { x: current.x, y: current.y - 1 },
+                    { x: current.x, y: current.y + 1 },
+                    // Diagonals
+                    { x: current.x - 1, y: current.y - 1 },
+                    { x: current.x + 1, y: current.y - 1 },
+                    { x: current.x - 1, y: current.y + 1 },
+                    { x: current.x + 1, y: current.y + 1 }
+                ];
+
+                for (let neighbor of neighbors) {
+                    if (neighbor.x < 0 || neighbor.x >= cols || neighbor.y < 0 || neighbor.y >= rows) continue;
+                    if (!pathfindingGrid[neighbor.y][neighbor.x].walkable) continue;
+
+                    const neighborKey = key(neighbor);
+                    if (closedSet.has(neighborKey)) continue;
+
+                    const isDiagonal = neighbor.x !== current.x && neighbor.y !== current.y;
+                    const tentativeGScore = gScore[currentKey] + (isDiagonal ? 1.414 : 1);
+
+                    if (!openSet.find(n => n.x === neighbor.x && n.y === neighbor.y)) {
+                        openSet.push(neighbor);
+                    } else if (tentativeGScore >= (gScore[neighborKey] || Infinity)) {
+                        continue;
+                    }
+
+                    cameFrom[neighborKey] = current;
+                    gScore[neighborKey] = tentativeGScore;
+                    fScore[neighborKey] = gScore[neighborKey] + heuristic(neighbor, endNode);
+                }
+            }
+
+            return null; // No path found
+        }
+
+        function heuristic(a, b) {
+            return Math.hypot(b.x - a.x, b.y - a.y);
+        }
+
+        function reconstructPath(cameFrom, current) {
+            const path = [current];
+            const key = (node) => `${node.x},${node.y}`;
+            
+            while (cameFrom[key(current)]) {
+                current = cameFrom[key(current)];
+                path.unshift(current);
+            }
+            
+            return path;
+        }
+
+        // Zombie class
+        class Zombie {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 18;
+                this.speed = 1.5;
+                this.health = 50;
+                this.maxHealth = 50;
+                this.damage = 10;
+                this.attackCooldown = 0;
+                this.path = null;
+                this.pathUpdateTimer = 0;
+                this.currentPathIndex = 0;
+                this.hitFlash = 0;
+                this.punchFrame = 0; // For attack animation
+            }
+
+            update() {
+                if (!game.player) return;
+
+                // Update path periodically
+                this.pathUpdateTimer--;
+                if (this.pathUpdateTimer <= 0 || !this.path) {
+                    this.path = findPath(this.x, this.y, game.player.x, game.player.y);
+                    this.currentPathIndex = 0;
+                    this.pathUpdateTimer = 30; // Update every 0.5 seconds
+                }
+
+                // Follow path if available
+                if (this.path && this.path.length > 0) {
+                    // Skip to next waypoint if we're close to current one
+                    while (this.currentPathIndex < this.path.length) {
+                        const waypoint = this.path[this.currentPathIndex];
+                        const waypointX = waypoint.x * GRID_SIZE + GRID_SIZE/2;
+                        const waypointY = waypoint.y * GRID_SIZE + GRID_SIZE/2;
+                        const distToWaypoint = Math.hypot(waypointX - this.x, waypointY - this.y);
+                        
+                        if (distToWaypoint < GRID_SIZE) {
+                            this.currentPathIndex++;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Move towards current waypoint
+                    if (this.currentPathIndex < this.path.length) {
+                        const waypoint = this.path[this.currentPathIndex];
+                        const waypointX = waypoint.x * GRID_SIZE + GRID_SIZE/2;
+                        const waypointY = waypoint.y * GRID_SIZE + GRID_SIZE/2;
+                        
+                        const angle = Math.atan2(waypointY - this.y, waypointX - this.x);
+                        const newX = this.x + Math.cos(angle) * this.speed;
+                        const newY = this.y + Math.sin(angle) * this.speed;
+
+                        // Only move if there's no collision
+                        if (!this.checkCollision(newX, newY)) {
+                            this.x = newX;
+                            this.y = newY;
+                        } else {
+                            // Recalculate path if stuck
+                            this.pathUpdateTimer = 0;
+                        }
+                    } else {
+                        // Reached end of path, move directly to player
+                        const angle = Math.atan2(game.player.y - this.y, game.player.x - this.x);
+                        const newX = this.x + Math.cos(angle) * this.speed;
+                        const newY = this.y + Math.sin(angle) * this.speed;
+
+                        if (!this.checkCollision(newX, newY)) {
+                            this.x = newX;
+                            this.y = newY;
+                        } else {
+                            // Recalculate path if stuck
+                            this.pathUpdateTimer = 0;
+                        }
+                    }
+                } else {
+                    // No path found, try direct movement
+                    const angle = Math.atan2(game.player.y - this.y, game.player.x - this.x);
+                    const newX = this.x + Math.cos(angle) * this.speed;
+                    const newY = this.y + Math.sin(angle) * this.speed;
+
+                    if (!this.checkCollision(newX, newY)) {
+                        this.x = newX;
+                        this.y = newY;
+                    }
+                }
+
+                // Attack player if close
+                const dist = Math.hypot(game.player.x - this.x, game.player.y - this.y);
+                if (dist < this.radius + game.player.radius && this.attackCooldown === 0) {
+                    game.player.takeDamage(this.damage);
+                    this.attackCooldown = 60;
+                    this.punchFrame = 20; // Start punch animation
+                }
+
+                if (this.attackCooldown > 0) this.attackCooldown--;
+                if (this.hitFlash > 0) this.hitFlash--;
+                if (this.punchFrame > 0) this.punchFrame--;
+            }
+
+            checkCollision(x, y) {
+                const checkRadius = this.radius + 50; // Only check nearby objects
+                
+                // Check walls with early skip
+                for (let i = 0; i < game.walls.length; i++) {
+                    const wall = game.walls[i];
+                    if (x + checkRadius < wall.x || x - checkRadius > wall.x + wall.width ||
+                        y + checkRadius < wall.y || y - checkRadius > wall.y + wall.height) {
+                        continue;
+                    }
+                    if (game.player.rectCircleCollision(wall, { x, y, radius: this.radius })) {
+                        return true;
+                    }
+                }
+                
+                // Check obstacles with early skip
+                for (let i = 0; i < game.obstacles.length; i++) {
+                    const obs = game.obstacles[i];
+                    if (x + checkRadius < obs.x || x - checkRadius > obs.x + obs.width ||
+                        y + checkRadius < obs.y || y - checkRadius > obs.y + obs.height) {
+                        continue;
+                    }
+                    if (game.player.rectCircleCollision(obs, { x, y, radius: this.radius })) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+
+            takeDamage(amount) {
+                this.health -= amount;
+                this.hitFlash = 5;
+                
+                // Add damage number
+                game.damageNumbers.push(new DamageNumber(this.x, this.y - this.radius, amount));
+                
+                if (this.health <= 0) {
+                    // Add blood splatter on death
+                    game.bloodSplatters.push(new BloodSplatter(this.x, this.y));
+                    
+                    // Add corpse that fades out
+                    game.zombieCorpses.push(new ZombieCorpse(this.x, this.y, this.radius));
+                    
+                    const index = game.zombies.indexOf(this);
+                    if (index > -1) {
+                        game.zombies.splice(index, 1);
+                        game.zombiesKilled++;
+                        updateUI();
+                    }
+                }
+            }
+
+            draw() {
+                // Draw body
+                ctx.fillStyle = this.damageCooldown > 0 && Math.floor(Date.now() / 100) % 2 ? '#ff6b6b' : '#2d5016';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Draw arms
+                const armRadius = 6;
+                ctx.fillStyle = '#3d6026';
+                
+                if (!game.player) return;
+                
+                const angleToPlayer = Math.atan2(game.player.y - this.y, game.player.x - this.x);
+                const armDist = this.radius + 4;
+                const angleOffset = 0.4;
+                
+                // Left arm - punches forward when attacking
+                let leftArmDist = armDist;
+                if (this.punchFrame > 0) {
+                    const punchProgress = (20 - this.punchFrame) / 20;
+                    const punchExtension = Math.sin(punchProgress * Math.PI) * 12;
+                    leftArmDist = armDist + punchExtension;
+                }
+                
+                const leftArmX = this.x + Math.cos(angleToPlayer - angleOffset) * leftArmDist;
+                const leftArmY = this.y + Math.sin(angleToPlayer - angleOffset) * leftArmDist;
+                ctx.beginPath();
+                ctx.arc(leftArmX, leftArmY, armRadius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Right arm - stays in place
+                const rightArmX = this.x + Math.cos(angleToPlayer + angleOffset) * armDist;
+                const rightArmY = this.y + Math.sin(angleToPlayer + angleOffset) * armDist;
+                ctx.beginPath();
+                ctx.arc(rightArmX, rightArmY, armRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Health bar
+                const barWidth = 30;
+                const barHeight = 4;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 10, barWidth, barHeight);
+                ctx.fillStyle = '#4ade80';
+                ctx.fillRect(this.x - barWidth/2, this.y - this.radius - 10, barWidth * (this.health / this.maxHealth), barHeight);
+            }
+        }
+
+        // Loot Container class
+        class LootContainer {
+            constructor(x, y, width, height, type = 'regular') {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+                this.looted = false;
+                this.type = type; // 'regular', 'golden', 'ammo'
+                this.loot = this.generateLoot();
+            }
+
+            generateLoot() {
+                const loot = [];
+                
+                if (this.type === 'golden') {
+                    // Golden crate - more valuable items, higher rarity
+                    const numItems = Math.floor(Math.random() * 2) + 2; // 2-3 items
+                    
+                    for (let i = 0; i < numItems; i++) {
+                        const rarityRoll = Math.random();
+                        let junkItem;
+                        
+                        if (rarityRoll < 0.20) {
+                            // 20% common
+                            junkItem = {...LOOT_TABLES.junk.common[Math.floor(Math.random() * LOOT_TABLES.junk.common.length)]};
+                        } else if (rarityRoll < 0.50) {
+                            // 30% uncommon
+                            junkItem = {...LOOT_TABLES.junk.uncommon[Math.floor(Math.random() * LOOT_TABLES.junk.uncommon.length)]};
+                        } else if (rarityRoll < 0.85) {
+                            // 35% rare
+                            junkItem = {...LOOT_TABLES.junk.rare[Math.floor(Math.random() * LOOT_TABLES.junk.rare.length)]};
+                        } else {
+                            // 15% legendary
+                            junkItem = {...LOOT_TABLES.junk.legendary[Math.floor(Math.random() * LOOT_TABLES.junk.legendary.length)]};
+                        }
+                        
+                        junkItem.type = 'junk';
+                        loot.push(junkItem);
+                    }
+                } else if (this.type === 'ammo') {
+                    // Ammo crate - only contains ammo
+                    const numItems = Math.floor(Math.random() * 2) + 2; // 2-3 ammo packs
+                    
+                    for (let i = 0; i < numItems; i++) {
+                        loot.push({...LOOT_TABLES.ammo[Math.floor(Math.random() * LOOT_TABLES.ammo.length)]});
+                    }
+                } else {
+                    // Regular crate - standard loot
+                    const numItems = Math.floor(Math.random() * 3) + 1; // 1-3 items
+                    
+                    for (let i = 0; i < numItems; i++) {
+                        const roll = Math.random();
+                        if (roll < 0.30) {
+                            // 30% ammo
+                            loot.push({...LOOT_TABLES.ammo[Math.floor(Math.random() * LOOT_TABLES.ammo.length)]});
+                        } else {
+                            // 70% junk with rarity system
+                            const rarityRoll = Math.random();
+                            let junkItem;
+                            
+                            if (rarityRoll < 0.60) {
+                                // 60% common
+                                junkItem = {...LOOT_TABLES.junk.common[Math.floor(Math.random() * LOOT_TABLES.junk.common.length)]};
+                            } else if (rarityRoll < 0.85) {
+                                // 25% uncommon
+                                junkItem = {...LOOT_TABLES.junk.uncommon[Math.floor(Math.random() * LOOT_TABLES.junk.uncommon.length)]};
+                            } else if (rarityRoll < 0.97) {
+                                // 12% rare
+                                junkItem = {...LOOT_TABLES.junk.rare[Math.floor(Math.random() * LOOT_TABLES.junk.rare.length)]};
+                            } else {
+                                // 3% legendary
+                                junkItem = {...LOOT_TABLES.junk.legendary[Math.floor(Math.random() * LOOT_TABLES.junk.legendary.length)]};
+                            }
+                            
+                            junkItem.type = 'junk';
+                            loot.push(junkItem);
+                        }
+                    }
+                }
+                
+                return loot;
+            }
+
+            draw() {
+                if (this.looted) {
+                    ctx.fillStyle = '#444';
+                } else {
+                    // Different colors based on type
+                    if (this.type === 'golden') {
+                        ctx.fillStyle = '#daa520'; // Golden
+                    } else if (this.type === 'ammo') {
+                        ctx.fillStyle = '#696969'; // Grey
+                    } else {
+                        ctx.fillStyle = '#8b4513'; // Brown (regular)
+                    }
+                }
+                
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.strokeStyle = this.type === 'golden' ? '#b8860b' : (this.type === 'ammo' ? '#505050' : '#654321');
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, this.y, this.width, this.height);
+
+                if (!this.looted) {
+                    // Different symbols based on type
+                    if (this.type === 'golden') {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = 'bold 24px Arial';
+                    } else if (this.type === 'ammo') {
+                        ctx.fillStyle = '#ffd93d';
+                        ctx.font = 'bold 20px Arial';
+                    } else {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.font = '20px Arial';
+                    }
+                    
+                    ctx.textAlign = 'center';
+                    const symbol = this.type === 'ammo' ? 'A' : '?';
+                    ctx.fillText(symbol, this.x + this.width/2, this.y + this.height/2 + 7);
+                }
+            }
+        }
+
+        // Initialize game
+        function initGame(resetWallet = true) {
+            game.running = true;
+            game.zombies = [];
+            game.lootContainers = [];
+            game.walls = [];
+            game.obstacles = [];
+            game.bullets = [];
+            game.zombiesKilled = 0;
+            game.itemsLooted = 0;
+            
+            // Store player data before creating new player
+            let savedInventory = [];
+            let savedWeaponIndex = -1;
+            let savedHealth = 100; // Default health for new game
+            if (game.player && !resetWallet) {
+                // Save current health
+                savedHealth = game.player.health;
+                
+                // Deep copy inventory to preserve ammo counts and other properties
+                savedInventory = game.player.inventory.map(item => {
+                    if (item.type === 'gun') {
+                        // Deep copy gun with all properties including ammo and magazine
+                        return {
+                            name: item.name,
+                            type: item.type,
+                            damage: item.damage,
+                            range: item.range,
+                            speed: item.speed,
+                            ammo: item.ammo,
+                            maxAmmo: item.maxAmmo,
+                            ammoType: item.ammoType,
+                            magazine: item.magazine || 0,
+                            magazineSize: item.magazineSize,
+                            reloadTime: item.reloadTime,
+                            spread: item.spread || undefined
+                        };
+                    } else {
+                        // Regular copy for other items
+                        return {...item};
+                    }
+                });
+                savedWeaponIndex = game.player.currentWeaponIndex;
+            }
+            
+            if (resetWallet) {
+                game.wallet = 0;
+                game.currentMap = 0;
+                // Reset shop purchases on full restart
+                shopPurchases = {
+                    weapons: [],
+                    health: []
+                };
+            }
+
+            // Get current map
+            const currentMapData = MAPS[game.currentMap % MAPS.length];
+
+            // Create player at map's starting position
+            game.player = new Player(currentMapData.playerStart.x, currentMapData.playerStart.y);
+            
+            // Restore inventory, weapon selection, and health
+            if (savedInventory.length > 0) {
+                game.player.inventory = savedInventory;
+                game.player.currentWeaponIndex = savedWeaponIndex;
+            }
+            
+            // Restore health (important: do this AFTER creating player)
+            if (!resetWallet) {
+                game.player.health = savedHealth;
+            }
+
+            // Create walls (room boundaries + map-specific walls)
+            const mapWalls = currentMapData.walls || [];
+            game.walls = [
+                // Canvas boundaries (outer perimeter - always present)
+                { x: -100, y: -100, width: 20, height: canvas.height + 200 }, // Far left
+                { x: -100, y: -100, width: canvas.width + 200, height: 20 }, // Far top
+                { x: canvas.width + 80, y: -100, width: 20, height: canvas.height + 200 }, // Far right
+                { x: -100, y: canvas.height + 80, width: canvas.width + 200, height: 20 }, // Far bottom
+                ...mapWalls // Add map-specific walls
+            ];
+
+            // Create obstacles from map data
+            game.obstacles = currentMapData.obstacles.map(obs => ({...obs}));
+
+            // Create loot containers from map data
+            game.lootContainers = currentMapData.lootPositions.map(pos => 
+                new LootContainer(pos.x, pos.y, 50, 50, pos.type || 'regular')
+            );
+
+            // Extraction zone from map data
+            game.extractionZone = {...currentMapData.extractionZone};
+
+            // Initialize pathfinding grid
+            initPathfindingGrid();
+
+            // Start zombie spawning
+            startZombieSpawning();
+
+            updateUI();
+            
+            // Display map name
+            addLootMessage(`Entering: ${currentMapData.name}`, 'loot-header');
+        }
+
+        // Zombie spawning
+        function startZombieSpawning() {
+            function spawnZombie() {
+                if (!game.running) return;
+
+                const spawnPoints = [
+                    { x: 50, y: 50 },
+                    { x: canvas.width - 50, y: 50 },
+                    { x: 50, y: canvas.height - 50 },
+                    { x: canvas.width / 2, y: 50 },
+                ];
+
+                const point = spawnPoints[Math.floor(Math.random() * spawnPoints.length)];
+                game.zombies.push(new Zombie(point.x, point.y));
+
+                const nextSpawn = Math.random() * 3000 + 2000; // 2-5 seconds
+                setTimeout(spawnZombie, nextSpawn);
+            }
+
+            setTimeout(spawnZombie, 2000);
+        }
+
+        // Update bullets
+        function updateBullets() {
+            if (!game.bullets) game.bullets = [];
+            
+            for (let i = game.bullets.length - 1; i >= 0; i--) {
+                const bullet = game.bullets[i];
+                
+                // Store old position for line collision detection
+                const oldX = bullet.x;
+                const oldY = bullet.y;
+                
+                // Move bullet
+                bullet.x += Math.cos(bullet.angle) * bullet.speed;
+                bullet.y += Math.sin(bullet.angle) * bullet.speed;
+                bullet.traveled += bullet.speed;
+
+                // Check collision with walls/obstacles
+                let hitWall = false;
+                const allObstacles = [...game.walls, ...game.obstacles];
+                for (let obs of allObstacles) {
+                    if (bullet.x >= obs.x && bullet.x <= obs.x + obs.width &&
+                        bullet.y >= obs.y && bullet.y <= obs.y + obs.height) {
+                        hitWall = true;
+                        break;
+                    }
+                }
+
+                if (hitWall) {
+                    game.bullets.splice(i, 1);
+                    continue;
+                }
+
+                // Check collision with zombies using line segment intersection
+                let hit = false;
+                for (let zombie of game.zombies) {
+                    // Check if bullet path intersects with zombie
+                    const distToBullet = Math.hypot(zombie.x - bullet.x, zombie.y - bullet.y);
+                    
+                    // Also check the line segment from old position to new position
+                    const distToLine = pointToLineDistance(
+                        zombie.x, zombie.y,
+                        oldX, oldY,
+                        bullet.x, bullet.y
+                    );
+                    
+                    if (distToBullet < zombie.radius || distToLine < zombie.radius) {
+                        zombie.takeDamage(bullet.damage);
+                        hit = true;
+                        break;
+                    }
+                }
+
+                // Remove bullet if hit or out of range
+                if (hit || bullet.traveled > bullet.range || 
+                    bullet.x < 0 || bullet.x > canvas.width || 
+                    bullet.y < 0 || bullet.y > canvas.height) {
+                    game.bullets.splice(i, 1);
+                }
+            }
+        }
+
+        // Helper function for point to line segment distance
+        function pointToLineDistance(px, py, x1, y1, x2, y2) {
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const lengthSquared = dx * dx + dy * dy;
+            
+            if (lengthSquared === 0) {
+                return Math.hypot(px - x1, py - y1);
+            }
+            
+            let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+            t = Math.max(0, Math.min(1, t));
+            
+            const closestX = x1 + t * dx;
+            const closestY = y1 + t * dy;
+            
+            return Math.hypot(px - closestX, py - closestY);
+        }
+
+        // Input handling
+        const keys = {};
+        const mousePos = { x: 0, y: 0 };
+        let mouseDown = false;
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            
+            // Weapon switching
+            if (e.key >= '1' && e.key <= '5') {
+                const index = parseInt(e.key) - 1;
+                if (index === 0) {
+                    game.player.currentWeaponIndex = -1; // Fists
+                } else {
+                    const weapons = game.player.inventory.filter(item => item.type === 'melee' || item.type === 'gun');
+                    if (weapons[index - 1]) {
+                        game.player.currentWeaponIndex = index - 1;
+                    }
+                }
+                updateUI();
+            }
+
+            // Loot
+            if (e.key === 'e' || e.key === 'E') {
+                tryLoot();
+            }
+            
+            // Reload
+            if (e.key === 'r' || e.key === 'R') {
+                if (game.player) {
+                    game.player.reload();
+                }
+            }
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            // Convert screen coordinates to world coordinates
+            mousePos.x = (e.clientX - rect.left) + game.camera.x;
+            mousePos.y = (e.clientY - rect.top) + game.camera.y;
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            mouseDown = true;
+            if (game.running && game.player) {
+                game.player.attack();
+            }
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            mouseDown = false;
+        });
+
+        // Shop functions
+        let shopPurchases = {
+            weapons: [],
+            health: []
+        };
+
+        function openShop() {
+            document.getElementById('shop').style.display = 'block';
+            document.getElementById('gameOver').style.display = 'none';
+            populateShop();
+        }
+
+        function closeShop() {
+            document.getElementById('shop').style.display = 'none';
+            document.getElementById('gameOver').style.display = 'block';
+        }
+
+        function populateShop() {
+            document.getElementById('shopWalletAmount').textContent = game.wallet;
+            
+            // Populate weapons
+            const weaponShop = document.getElementById('weaponShop');
+            weaponShop.innerHTML = '';
+            
+            for (let i = 0; i < SHOP_ITEMS.weapons.length; i++) {
+                const weapon = SHOP_ITEMS.weapons[i];
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'shop-item-name';
+                nameDiv.textContent = weapon.name;
+                
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'shop-item-stats';
+                if (weapon.type === 'melee') {
+                    statsDiv.textContent = 'DMG: ' + weapon.damage + ' | Range: ' + weapon.range;
+                } else {
+                    statsDiv.textContent = 'DMG: ' + weapon.damage + ' | Starts with 0 ammo';
+                }
+                
+                const priceDiv = document.createElement('div');
+                priceDiv.className = 'shop-item-price';
+                priceDiv.textContent = '$' + weapon.price;
+                
+                const buyButton = document.createElement('button');
+                const alreadyPurchased = shopPurchases.weapons.includes(i);
+                
+                if (alreadyPurchased) {
+                    buyButton.textContent = 'SOLD';
+                    buyButton.disabled = true;
+                } else {
+                    buyButton.textContent = 'BUY';
+                    buyButton.disabled = false;
+                    // Use closure to capture the index properly
+                    (function(weaponIndex) {
+                        buyButton.onclick = function() {
+                            purchaseWeapon(weaponIndex);
+                        };
+                    })(i);
+                }
+                
+                itemDiv.appendChild(nameDiv);
+                itemDiv.appendChild(statsDiv);
+                itemDiv.appendChild(priceDiv);
+                itemDiv.appendChild(buyButton);
+                weaponShop.appendChild(itemDiv);
+            }
+            
+            // Populate health items (health items don't stay sold since they're consumable)
+            const healthShop = document.getElementById('healthShop');
+            healthShop.innerHTML = '';
+            
+            for (let i = 0; i < SHOP_ITEMS.health.length; i++) {
+                const item = SHOP_ITEMS.health[i];
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'shop-item';
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'shop-item-name';
+                nameDiv.textContent = item.name;
+                
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'shop-item-stats';
+                statsDiv.textContent = 'Heals: ' + item.healing + ' HP';
+                
+                const priceDiv = document.createElement('div');
+                priceDiv.className = 'shop-item-price';
+                priceDiv.textContent = '$' + item.price;
+                
+                const buyButton = document.createElement('button');
+                buyButton.textContent = 'BUY';
+                // Use closure to capture the index properly
+                (function(healthIndex) {
+                    buyButton.onclick = function() {
+                        purchaseHealth(healthIndex);
+                    };
+                })(i);
+                
+                itemDiv.appendChild(nameDiv);
+                itemDiv.appendChild(statsDiv);
+                itemDiv.appendChild(priceDiv);
+                itemDiv.appendChild(buyButton);
+                healthShop.appendChild(itemDiv);
+            }
+        }
+
+        function purchaseWeapon(index) {
+            const weapon = SHOP_ITEMS.weapons[index];
+            
+            if (!weapon) {
+                console.error('Weapon not found at index:', index);
+                return;
+            }
+            
+            if (game.wallet < weapon.price) {
+                addLootMessage('Not enough money!', 'loot-message');
+                return;
+            }
+            
+            // Deduct money
+            game.wallet -= weapon.price;
+            
+            // Add weapon to inventory (create a copy)
+            const weaponCopy = {
+                name: weapon.name,
+                type: weapon.type,
+                damage: weapon.damage,
+                range: weapon.range,
+                speed: weapon.speed
+            };
+            
+            // Add spread property if it exists (for shotgun)
+            if (weapon.spread) {
+                weaponCopy.spread = weapon.spread;
+            }
+            
+            // Add ammo properties for guns
+            if (weapon.type === 'gun') {
+                weaponCopy.ammo = weapon.ammo;
+                weaponCopy.maxAmmo = weapon.maxAmmo;
+                weaponCopy.ammoType = weapon.ammoType;
+                weaponCopy.magazine = 0;
+                weaponCopy.magazineSize = weapon.magazineSize;
+                weaponCopy.reloadTime = weapon.reloadTime;
+            }
+            
+            game.player.inventory.push(weaponCopy);
+            
+            // Mark as purchased
+            shopPurchases.weapons.push(index);
+            
+            addLootMessage('Purchased: ' + weapon.name, 'loot-weapon');
+            updateUI();
+            populateShop();
+        }
+
+        function purchaseHealth(index) {
+            const item = SHOP_ITEMS.health[index];
+            
+            if (!item) {
+                console.error('Health item not found at index:', index);
+                return;
+            }
+            
+            if (game.wallet < item.price) {
+                addLootMessage('Not enough money!', 'loot-message');
+                return;
+            }
+            
+            // Deduct money
+            game.wallet -= item.price;
+            
+            // Apply healing immediately
+            const oldHealth = game.player.health;
+            game.player.health = Math.min(game.player.maxHealth, game.player.health + item.healing);
+            const healed = game.player.health - oldHealth;
+            
+            addLootMessage('Used ' + item.name + ' - Healed ' + healed + ' HP', 'loot-health');
+            updateUI();
+            populateShop();
+        }
+
+        // Add message to loot feed
+        function addLootMessage(message, className = '') {
+            const lootFeed = document.getElementById('lootFeed');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `loot-message ${className}`;
+            messageDiv.textContent = message;
+            lootFeed.appendChild(messageDiv);
+            
+            // Auto-scroll to bottom
+            lootFeed.scrollTop = lootFeed.scrollHeight;
+            
+            // Keep only last 50 messages
+            while (lootFeed.children.length > 51) { // +1 for header
+                lootFeed.children[1].remove();
+            }
+        }
+
+        // Toggle loot feed minimize
+        document.getElementById('minimizeBtn').addEventListener('click', function() {
+            const lootFeed = document.getElementById('lootFeed');
+            const btn = document.getElementById('minimizeBtn');
+            lootFeed.classList.toggle('minimized');
+            btn.textContent = lootFeed.classList.contains('minimized') ? '+' : '−';
+        });
+
+        // Update equipment bar
+        function updateEquipmentBar() {
+            if (!game.player) return;
+            
+            const weapons = game.player.inventory.filter(item => item.type === 'melee' || item.type === 'gun');
+            
+            // Update all slots
+            for (let i = 0; i < 5; i++) {
+                const slot = document.getElementById(`slot${i}`);
+                const nameEl = slot.querySelector('.equipment-name');
+                const ammoEl = slot.querySelector('.equipment-ammo');
+                
+                if (i === 0) {
+                    // Slot 0 is always fists
+                    nameEl.textContent = 'Fists';
+                    nameEl.classList.remove('empty');
+                    if (ammoEl) ammoEl.textContent = '';
+                } else if (weapons[i - 1]) {
+                    // Show weapon name
+                    const weapon = weapons[i - 1];
+                    nameEl.textContent = weapon.name;
+                    nameEl.classList.remove('empty');
+                    
+                    // Show ammo for guns (magazine/reserve)
+                    if (ammoEl && weapon.type === 'gun') {
+                        const mag = weapon.magazine || 0;
+                        ammoEl.textContent = `${mag}/${weapon.ammo}`;
+                    } else if (ammoEl) {
+                        ammoEl.textContent = '';
+                    }
+                } else {
+                    // Empty slot
+                    nameEl.textContent = 'Empty';
+                    nameEl.classList.add('empty');
+                    if (ammoEl) ammoEl.textContent = '';
+                }
+                
+                // Highlight active weapon
+                if ((game.player.currentWeaponIndex === -1 && i === 0) || 
+                    (game.player.currentWeaponIndex === i - 1 && i > 0)) {
+                    slot.classList.add('active');
+                } else {
+                    slot.classList.remove('active');
+                }
+            }
+        }
+
+        // Loot function
+        function tryLoot() {
+            if (!game.player) return;
+
+            for (let container of game.lootContainers) {
+                if (container.looted) continue;
+
+                const dist = Math.hypot(
+                    game.player.x - (container.x + container.width/2),
+                    game.player.y - (container.y + container.height/2)
+                );
+
+                if (dist < 80) {
+                    container.looted = true;
+                    
+                    addLootMessage('=== CONTAINER OPENED ===', 'loot-header');
+                    let totalValue = 0;
+                    
+                    for (let item of container.loot) {
+                        // Handle ammo differently - add to gun if player has it
+                        if (item.amount && item.for) {
+                            // Find gun that uses this ammo by matching gun name
+                            const gun = game.player.inventory.find(inv => inv.type === 'gun' && inv.name === item.for);
+                            if (gun) {
+                                const ammoAdded = Math.min(item.amount, gun.maxAmmo - gun.ammo);
+                                gun.ammo = Math.min(gun.ammo + ammoAdded, gun.maxAmmo);
+                                addLootMessage(`[AMMO] +${ammoAdded} ${item.name}`, 'loot-ammo');
+                                
+                                // If we couldn't add all ammo due to max capacity
+                                if (ammoAdded < item.amount) {
+                                    addLootMessage(`(${gun.name} already at max ammo)`, 'loot-ammo');
+                                }
+                            } else {
+                                addLootMessage(`[AMMO] ${item.name} (No ${item.for})`, 'loot-ammo');
+                            }
+                        } else {
+                            game.player.inventory.push(item);
+                            game.itemsLooted++;
+                            
+                            // Display item in feed
+                            if (item.type === 'junk') {
+                                const rarityClass = `loot-${item.rarity.toLowerCase()}`;
+                                addLootMessage(`[${item.rarity}] ${item.name} - $${item.value}`, rarityClass);
+                                totalValue += item.value;
+                            }
+                        }
+                    }
+                    
+                    if (totalValue > 0) {
+                        addLootMessage(`Container Value: $${totalValue}`, 'loot-total');
+                    }
+                    
+                    playSound('loot');
+                    updateUI();
+                    break;
+                }
+            }
+        }
+
+        // Check extraction
+        function checkExtraction() {
+            if (!game.player || !game.extractionZone) return;
+
+            const playerInZone = 
+                game.player.x > game.extractionZone.x &&
+                game.player.x < game.extractionZone.x + game.extractionZone.width &&
+                game.player.y > game.extractionZone.y &&
+                game.player.y < game.extractionZone.y + game.extractionZone.height;
+
+            if (playerInZone) {
+                // Calculate total junk value
+                let junkValue = 0;
+                for (let item of game.player.inventory) {
+                    if (item.type === 'junk' && item.value) {
+                        junkValue += item.value;
+                    }
+                }
+                
+                // Add to wallet
+                game.wallet += junkValue;
+                
+                addLootMessage(`=== EXTRACTED ===`, 'loot-header');
+                addLootMessage(`Junk sold for: $${junkValue}`, 'loot-total');
+                addLootMessage(`Total wallet: $${game.wallet}`, 'loot-total');
+                
+                // Move to next map
+                game.currentMap++;
+                
+                if (game.currentMap >= MAPS.length) {
+                    // Completed all maps
+                    gameOver(true, true);
+                } else {
+                    // Show extraction screen with shop/next map options
+                    gameOver(true, false);
+                }
+            }
+        }
+
+        // Update UI
+        function updateUI() {
+            if (!game.player) return;
+
+            document.getElementById('health').textContent = game.player.health;
+            document.getElementById('zombieCount').textContent = game.zombies.length;
+            document.getElementById('wallet').textContent = game.wallet;
+
+            const weapon = game.player.getCurrentWeapon();
+            document.getElementById('currentWeapon').textContent = weapon.name;
+            
+            // Display ammo for guns (magazine/reserve), infinity for melee
+            if (weapon.type === 'gun') {
+                const mag = weapon.magazine || 0;
+                document.getElementById('ammo').textContent = `${mag}/${weapon.ammo}`;
+            } else {
+                document.getElementById('ammo').textContent = '∞';
+            }
+
+            // Update equipment bar
+            updateEquipmentBar();
+
+            // Update inventory display
+            const inventoryList = document.getElementById('inventoryList');
+            inventoryList.innerHTML = '';
+            
+            // Show junk items
+            const junkItems = game.player.inventory.filter(item => item.type === 'junk');
+            junkItems.forEach(item => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = `inventory-item loot-${item.rarity.toLowerCase()}`;
+                itemDiv.textContent = `${item.name} - $${item.value}`;
+                inventoryList.appendChild(itemDiv);
+            });
+            
+            // Show ammo separately for each gun type
+            const guns = game.player.inventory.filter(item => item.type === 'gun');
+            const ammoByType = {};
+            
+            guns.forEach(gun => {
+                if (gun.ammo > 0) {
+                    ammoByType[gun.ammoType] = gun.ammo;
+                }
+            });
+            
+            Object.keys(ammoByType).forEach(ammoType => {
+                const ammoDiv = document.createElement('div');
+                ammoDiv.className = 'inventory-item loot-ammo';
+                ammoDiv.textContent = `${ammoType}: ${ammoByType[ammoType]}`;
+                inventoryList.appendChild(ammoDiv);
+            });
+            
+            if (junkItems.length === 0 && Object.keys(ammoByType).length === 0) {
+                inventoryList.textContent = 'Empty';
+            }
+        }
+
+        // Game over
+        function gameOver(victory, allMapsComplete = false) {
+            game.running = false;
+            const gameOverDiv = document.getElementById('gameOver');
+            const gameOverText = document.getElementById('gameOverText');
+            const gameOverStats = document.getElementById('gameOverStats');
+            const nextMapBtn = document.getElementById('nextMapBtn');
+            const shopBtn = document.getElementById('shopBtn');
+            const restartBtn = document.getElementById('restartBtn');
+
+            if (victory) {
+                gameOverDiv.classList.add('victory');
+                if (allMapsComplete) {
+                    gameOverText.textContent = 'ALL MAPS COMPLETE!';
+                    gameOverStats.innerHTML = `
+                        You completed all ${MAPS.length} maps!<br>
+                        Final Wallet: $${game.wallet}<br>
+                        Total Zombies Killed: ${game.zombiesKilled}<br>
+                        Total Items Looted: ${game.itemsLooted}
+                    `;
+                    nextMapBtn.style.display = 'none';
+                    shopBtn.style.display = 'none';
+                    restartBtn.style.display = 'inline-block';
+                } else {
+                    gameOverText.textContent = 'EXTRACTED!';
+                    gameOverStats.innerHTML = `
+                        Map ${game.currentMap}/${MAPS.length} complete!<br>
+                        Current Wallet: $${game.wallet}<br>
+                        Zombies Killed: ${game.zombiesKilled}
+                    `;
+                    nextMapBtn.style.display = 'inline-block';
+                    shopBtn.style.display = 'inline-block';
+                    restartBtn.style.display = 'none';
+                }
+            } else {
+                gameOverDiv.classList.remove('victory');
+                gameOverText.textContent = 'YOU DIED';
+                gameOverStats.innerHTML = `
+                    Map: ${game.currentMap + 1}/${MAPS.length}<br>
+                    Wallet Lost: $${game.wallet}<br>
+                    Zombies Killed: ${game.zombiesKilled}<br>
+                    Items Looted: ${game.itemsLooted}
+                `;
+                nextMapBtn.style.display = 'none';
+                shopBtn.style.display = 'none';
+                restartBtn.style.display = 'inline-block';
+            }
+
+            gameOverDiv.style.display = 'block';
+        }
+
+        document.getElementById('nextMapBtn').addEventListener('click', () => {
+            document.getElementById('gameOver').style.display = 'none';
+            initGame(false); // Don't reset wallet
+        });
+
+        document.getElementById('shopBtn').addEventListener('click', () => {
+            openShop();
+        });
+
+        document.getElementById('closeShopBtn').addEventListener('click', () => {
+            closeShop();
+        });
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            document.getElementById('gameOver').style.display = 'none';
+            
+            // Clear loot feed except header
+            const lootFeed = document.getElementById('lootFeed');
+            while (lootFeed.children.length > 1) {
+                lootFeed.children[1].remove();
+            }
+            
+            initGame(true); // Reset wallet and start from map 1
+        });
+
+        // Sound placeholder (ready for audio implementation)
+        // Sound system
+        const soundCache = {};
+        let lastZombieSound = Date.now();
+        let backgroundMusic = null;
+
+        function initBackgroundMusic() {
+            try {
+                if (!backgroundMusic) {
+                    backgroundMusic = new Audio('sounds/background.mp3');
+                    backgroundMusic.loop = true;
+                    backgroundMusic.volume = 0.3;
+                }
+                
+                backgroundMusic.play().catch(err => {
+                    console.log('Could not play background music:', err.message);
+                });
+            } catch (err) {
+                console.log('Background music error:', err.message);
+            }
+        }
+
+        function stopBackgroundMusic() {
+            if (backgroundMusic) {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+            }
+        }
+
+        function playSound(type) {
+            let soundFile = '';
+            
+            // Map sound types to files
+            switch(type) {
+                case 'punch':
+                    soundFile = 'punch.mp3';
+                    break;
+                case 'melee':
+                    soundFile = 'melee.mp3';
+                    break;
+                case 'pistol':
+                    soundFile = 'pistol.mp3';
+                    break;
+                case 'shotgun':
+                    soundFile = 'shotgun.mp3';
+                    break;
+                case 'smg':
+                    soundFile = 'smg.mp3';
+                    break;
+                case 'loot':
+                    soundFile = 'looting.mp3';
+                    break;
+                case 'reload':
+                    soundFile = 'reload.mp3';
+                    break;
+                default:
+                    console.log(`Sound: ${type}`);
+                    return;
+            }
+            
+            try {
+                // Create or reuse audio element
+                if (!soundCache[soundFile]) {
+                    soundCache[soundFile] = new Audio(`sounds/${soundFile}`);
+                }
+                
+                // Clone audio for overlapping sounds
+                const audio = soundCache[soundFile].cloneNode();
+                audio.volume = 0.5;
+                audio.play().catch(err => {
+                    console.log(`Could not play ${soundFile}:`, err.message);
+                });
+            } catch (err) {
+                console.log(`Sound error for ${soundFile}:`, err.message);
+            }
+        }
+
+        function playRandomZombieSound() {
+            if (!game.running || game.zombies.length === 0) return;
+            
+            const now = Date.now();
+            const timeSinceLastSound = now - lastZombieSound;
+            
+            // Random interval between 5-10 seconds (5000-10000ms)
+            const randomInterval = 5000 + Math.random() * 5000;
+            
+            if (timeSinceLastSound > randomInterval) {
+                // Pick random zombie sound (1-5)
+                const zombieNum = Math.floor(Math.random() * 5) + 1;
+                const soundFile = `zombie${zombieNum}.mp3`;
+                
+                try {
+                    const audio = new Audio(`sounds/${soundFile}`);
+                    audio.volume = 0.3;
+                    audio.play().catch(err => {
+                        console.log(`Could not play ${soundFile}:`, err.message);
+                    });
+                } catch (err) {
+                    console.log(`Zombie sound error:`, err.message);
+                }
+                
+                lastZombieSound = now;
+            }
+        }
+
+        // Draw furniture
+        function drawFurniture(furniture, palette) {
+            furniture.forEach(item => {
+                if (item.type === 'crate') {
+                    ctx.fillStyle = '#8b7355';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'pallet') {
+                    ctx.fillStyle = '#a0826d';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#8b7355';
+                    ctx.lineWidth = 1;
+                    for (let i = 0; i < item.width; i += 15) {
+                        ctx.strokeRect(item.x + i, item.y, 12, item.height);
+                    }
+                } else if (item.type === 'barrel') {
+                    ctx.fillStyle = '#4a4a4a';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#2a2a2a';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (item.type === 'desk') {
+                    ctx.fillStyle = '#8b7d6b';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#5c4f3a';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'chair') {
+                    ctx.fillStyle = '#4a4a4a';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (item.type === 'cabinet') {
+                    ctx.fillStyle = '#696969';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#505050';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'cooler') {
+                    ctx.fillStyle = '#87ceeb';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#4682b4';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (item.type === 'display') {
+                    ctx.fillStyle = '#cd853f';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#8b4513';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'bench') {
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'planter') {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#8b4513';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                } else if (item.type === 'bin') {
+                    ctx.fillStyle = '#696969';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (item.type === 'car') {
+                    ctx.fillStyle = '#4682b4';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#2f4f4f';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                    // Windows
+                    ctx.fillStyle = '#87ceeb';
+                    ctx.fillRect(item.x + 10, item.y + 10, item.width - 20, 30);
+                } else if (item.type === 'pillar') {
+                    ctx.fillStyle = '#808080';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#696969';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else if (item.type === 'stain') {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (item.type === 'couch') {
+                    ctx.fillStyle = '#8b4789';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#6a3a68';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'table') {
+                    ctx.fillStyle = '#8b7355';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'bed') {
+                    ctx.fillStyle = '#cd5c5c';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#8b3a3a';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'dresser') {
+                    ctx.fillStyle = '#8b7355';
+                    ctx.fillRect(item.x, item.y, item.width, item.height);
+                    ctx.strokeStyle = '#654321';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(item.x, item.y, item.width, item.height);
+                } else if (item.type === 'plant') {
+                    ctx.fillStyle = '#2e8b57';
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, item.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#8b4513';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            });
+        }
+
+        // Screen shake
+        function addScreenShake(intensity, duration) {
+            game.screenShake.intensity = Math.max(game.screenShake.intensity, intensity);
+            game.screenShake.duration = Math.max(game.screenShake.duration, duration);
+        }
+
+        function updateCamera() {
+            if (!game.player) return;
+            
+            // Target camera on player
+            game.camera.targetX = game.player.x - canvas.width / 2;
+            game.camera.targetY = game.player.y - canvas.height / 2;
+            
+            // Smooth camera movement
+            game.camera.x += (game.camera.targetX - game.camera.x) * game.camera.smoothing;
+            game.camera.y += (game.camera.targetY - game.camera.y) * game.camera.smoothing;
+            
+            // Update screen shake
+            if (game.screenShake.duration > 0) {
+                game.screenShake.duration--;
+                if (game.screenShake.duration === 0) {
+                    game.screenShake.intensity = 0;
+                }
+            }
+        }
+
+        // Game loop
+        function gameLoop() {
+            if (game.running) {
+                const currentMapData = MAPS[game.currentMap % MAPS.length];
+                const palette = currentMapData.colorPalette;
+                
+                // Update camera
+                updateCamera();
+                
+                // Update
+                if (game.player) {
+                    game.player.update(keys, mousePos);
+                }
+                game.zombies.forEach(z => z.update());
+                updateBullets();
+                checkExtraction();
+                
+                // Play random zombie sounds
+                playRandomZombieSound();
+                
+                // Update damage numbers
+                for (let i = game.damageNumbers.length - 1; i >= 0; i--) {
+                    game.damageNumbers[i].update();
+                    if (game.damageNumbers[i].life <= 0) {
+                        game.damageNumbers.splice(i, 1);
+                    }
+                }
+                
+                // Update muzzle flashes
+                for (let i = game.muzzleFlashes.length - 1; i >= 0; i--) {
+                    game.muzzleFlashes[i].update();
+                    if (game.muzzleFlashes[i].life <= 0) {
+                        game.muzzleFlashes.splice(i, 1);
+                    }
+                }
+                
+                // Update blood splatters
+                for (let i = game.bloodSplatters.length - 1; i >= 0; i--) {
+                    game.bloodSplatters[i].update();
+                    if (game.bloodSplatters[i].isDead()) {
+                        game.bloodSplatters.splice(i, 1);
+                    }
+                }
+                // Limit max blood splatters for performance
+                if (game.bloodSplatters.length > 15) {
+                    game.bloodSplatters.splice(0, game.bloodSplatters.length - 15);
+                }
+                
+                // Update zombie corpses
+                for (let i = game.zombieCorpses.length - 1; i >= 0; i--) {
+                    game.zombieCorpses[i].update();
+                    if (game.zombieCorpses[i].isDead()) {
+                        game.zombieCorpses.splice(i, 1);
+                    }
+                }
+                // Limit max corpses for performance
+                if (game.zombieCorpses.length > 20) {
+                    game.zombieCorpses.splice(0, game.zombieCorpses.length - 20);
+                }
+
+                // Apply screen shake to camera
+                let shakeX = 0;
+                let shakeY = 0;
+                if (game.screenShake.duration > 0) {
+                    shakeX = (Math.random() - 0.5) * game.screenShake.intensity;
+                    shakeY = (Math.random() - 0.5) * game.screenShake.intensity;
+                }
+                
+                // Save context and apply camera transform
+                ctx.save();
+                ctx.translate(-game.camera.x + shakeX, -game.camera.y + shakeY);
+                
+                // Draw floor with map-specific color
+                ctx.fillStyle = palette.floor;
+                ctx.fillRect(game.camera.x - 100, game.camera.y - 100, canvas.width + 200, canvas.height + 200);
+
+                // Draw walls with strong visual distinction (thick, dark, with border)
+                ctx.fillStyle = palette.walls;
+                game.walls.forEach(wall => {
+                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                    // Add thick border to make walls more distinct
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+                });
+
+                // Draw obstacles with lighter color (clearly different from walls)
+                ctx.fillStyle = palette.obstacles;
+                game.obstacles.forEach(obs => {
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.strokeStyle = palette.accent;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+                });
+
+                // Draw furniture
+                if (currentMapData.furniture) {
+                    drawFurniture(currentMapData.furniture, palette);
+                }
+
+                // Draw extraction zone
+                ctx.fillStyle = 'rgba(76, 175, 80, 0.3)';
+                ctx.fillRect(game.extractionZone.x, game.extractionZone.y, 
+                           game.extractionZone.width, game.extractionZone.height);
+                ctx.strokeStyle = '#4caf50';
+                ctx.lineWidth = 3;
+                ctx.strokeRect(game.extractionZone.x, game.extractionZone.y, 
+                             game.extractionZone.width, game.extractionZone.height);
+                ctx.fillStyle = '#4caf50';
+                ctx.font = 'bold 20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('EXIT', game.extractionZone.x + game.extractionZone.width/2, 
+                           game.extractionZone.y + game.extractionZone.height/2 + 7);
+
+                // Draw map name
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(10, 10, 250, 40);
+                ctx.fillStyle = '#ffd700';
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText(`${MAPS[game.currentMap % MAPS.length].name} (${game.currentMap + 1}/${MAPS.length})`, 20, 35);
+
+                // Draw loot containers
+                game.lootContainers.forEach(c => c.draw());
+
+                // Draw bullets
+                ctx.fillStyle = '#ffd93d';
+                if (game.bullets) {
+                    game.bullets.forEach(bullet => {
+                        ctx.beginPath();
+                        ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                    });
+                }
+                
+                // Draw zombie corpses (under zombies)
+                game.zombieCorpses.forEach(corpse => corpse.draw());
+                
+                // Draw blood splatters
+                game.bloodSplatters.forEach(splatter => splatter.draw());
+
+                // Draw drop shadows for zombies
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                game.zombies.forEach(z => {
+                    ctx.beginPath();
+                    ctx.ellipse(z.x + 2, z.y + z.radius + 3, z.radius * 0.8, z.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                // Draw zombies
+                game.zombies.forEach(z => z.draw());
+                
+                // Draw muzzle flashes
+                game.muzzleFlashes.forEach(flash => flash.draw());
+
+                // Draw drop shadow for player
+                if (game.player) {
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+                    ctx.beginPath();
+                    ctx.ellipse(game.player.x + 2, game.player.y + game.player.radius + 3, 
+                               game.player.radius * 0.8, game.player.radius * 0.4, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // Draw player
+                if (game.player) {
+                    game.player.draw();
+                    
+                    // Draw reload bar
+                    if (game.player.isReloading) {
+                        const barWidth = 100;
+                        const barHeight = 10;
+                        const barX = game.player.x - barWidth / 2;
+                        const barY = game.player.y - game.player.radius - 30;
+                        
+                        // Background
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                        ctx.fillRect(barX, barY, barWidth, barHeight);
+                        
+                        // Progress
+                        const progress = game.player.reloadProgress / game.player.reloadTimeTotal;
+                        ctx.fillStyle = '#4a90e2';
+                        ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+                        
+                        // Border
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(barX, barY, barWidth, barHeight);
+                        
+                        // Text
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 10px Arial';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('RELOADING', game.player.x, barY - 5);
+                    }
+                }
+                
+                // Draw damage numbers
+                game.damageNumbers.forEach(dn => dn.draw());
+                
+                // Restore context (end camera transform)
+                ctx.restore();
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start game function (called from title screen button)
+        function startGame() {
+            // Hide title screen
+            document.getElementById('titleScreen').classList.add('hidden');
+            
+            // Initialize game
+            initGame();
+            initBackgroundMusic();
+            gameLoop();
+        }
+
+        // Don't auto-start, wait for title screen button click
+    </script>
+</body>
+</html>
